@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <spin_barrier.h>
+#include <pthread.h>
 
 struct prefix_sum_args_t {
   int*               input_vals;
@@ -14,6 +15,8 @@ struct prefix_sum_args_t {
   int                t_id;
   int (*op)(int, int, int);
   int n_loops;
+  pthread_barrier_t  barrier;
+  int pad_length;
 };
 
 prefix_sum_args_t* alloc_args(int n_threads);
@@ -27,4 +30,8 @@ void fill_args(prefix_sum_args_t *args,
                int *outputs,
                bool spin,
                int (*op)(int, int, int),
-               int n_loops);
+               int n_loops,
+               pthread_barrier_t barrier,
+               int pad_length);
+
+pthread_barrier_t* alloc_barriers(int n_barriers);

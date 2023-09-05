@@ -1,5 +1,5 @@
 #include <io.h>
-#include "helpers.h"
+//#include "helpers.h"
 
 void read_file(struct options_t* args,
                int*              n_vals,
@@ -11,14 +11,19 @@ void read_file(struct options_t* args,
 	in.open(args->in_file);
 	// Get num vals
 	in >> *n_vals;
-
+	std::cout <<"n_vals = " << *n_vals << "\n";
+	int pad_size = next_power_of_two(*n_vals);
+	std::cout << "pad_size = " <<pad_size << " " <<"\n";
 	// Alloc input and output arrays
-	*input_vals = (int*) malloc(*n_vals * sizeof(int));
-	*output_vals = (int*) malloc(*n_vals * sizeof(int));
+	*input_vals = (int*) malloc(pad_size * sizeof(int));
+	*output_vals = (int*) malloc(pad_size * sizeof(int));
 
 	// Read input vals
 	for (int i = 0; i < *n_vals; ++i) {
 		in >> (*input_vals)[i];
+	}
+	for (int i=*n_vals; i<pad_size; ++i) {
+		input_vals[i] = 0;
 	}
 }
 

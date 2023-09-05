@@ -5,6 +5,7 @@
 #include <prefix_sum.h>
 #include <iostream>
 #include <fstream>
+#include "helpers.h"
 
 void read_file(struct options_t* args,
                int*              n_vals,
