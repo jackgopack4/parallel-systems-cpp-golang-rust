@@ -48,10 +48,10 @@ void* compute_prefix_sum(void *a)
     for (auto stride = 2; stride <= args->pad_length; stride *= 2) {
         //cout << "n_vals = " << n_vals << "\n";
         //cout << "pad_length = " << pad_length << "\n";
-        auto index = t_id*stride+stride-1;
+        auto index = (t_id + 1) * stride - 1;
         while(index < pad_length) {
             //cout << "index = " << index << "\n";
-            args->output_vals[index] = scan_operator(args->output_vals[index],args->output_vals[index-stride/2],n_loops) ;
+            args->output_vals[index] = scan_operator(args->output_vals[index],args->output_vals[index-stride/2],n_loops);
             index += stride*n_threads;
         }
         //cout << "thread " << t_id << " waiting for barrier.\n";
@@ -69,15 +69,22 @@ void* compute_prefix_sum(void *a)
     //pthread_barrier_wait(&post_reduction);
 
     // downsweep phase
-    /*
-    for (int stride = pad_length / 2; stride >0; stride /= 2) {
-        pthread_barrier_wait(&pre_reverse);
-        int index = (args->t_id+1)*stride*2 - 1;
+    
+    for (int stride = pad_length / 2; stride >1; stride /= 2) {
+        //pthread_barrier_wait(&pre_reverse);
+        auto index = (t_id + 1) * stride - 1;
+        while(index+stride/2 < pad_length) {
+            args->output_vals[index+stride/2] = scan_operator(args->output_vals[index],args->output_vals[index+stride/2],n_loops);
+            index += stride*n_threads;
+        }
+        pthread_barrier_wait((pthread_barrier_t *)args->barrier);
+        /*
         if(index+stride < args->n_vals) {
             args->output_vals[index+stride] = args->input_vals[index]+args->output_vals[index+stride];
         }
+        */
     }
-    */
+    
     return 0;
 }
 
