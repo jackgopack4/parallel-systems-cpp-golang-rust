@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     read_file(&opts, &n_vals, &input_vals, &output_vals);
     //printf((char*)input_vals);
     //auto input_size = std::size(&input_vals);
+    cout << "input_vals before scan:\n";
     cout << "{ ";
     for(auto idx=0;idx<n_vals;++idx) {
         cout << input_vals[idx] << " ";
@@ -46,8 +47,10 @@ int main(int argc, char **argv)
     //scan_operator = add;
 
     pthread_barrier_t *barrier = alloc_barriers(1);
+    auto err = pthread_barrier_init(barrier, NULL, opts.n_threads);
+    cout << "pthread_barrier returned " << err << " with value of " << opts.n_threads << ".\n";
     fill_args(ps_args, opts.n_threads, n_vals, input_vals, output_vals,
-        opts.spin, scan_operator, opts.n_loops, *barrier,pad_length);
+        opts.spin, scan_operator, opts.n_loops, barrier,pad_length);
 
     // Start timer
     auto start = std::chrono::high_resolution_clock::now();
@@ -63,7 +66,10 @@ int main(int argc, char **argv)
         }
     }
     else {
-        pthread_barrier_init(barrier, NULL, opts.n_threads);
+        for (auto i = 0; i< n_vals; ++i) {
+            ps_args->output_vals[i] = ps_args->input_vals[i];
+        }
+        //pthread_barrier_init(barrier, NULL, opts.n_threads);
         //pthread_barrier_init(&pre_reverse, NULL, opts.n_threads);
         start_threads(threads, opts.n_threads, ps_args, &compute_prefix_sum);
         //compute_prefix_sum(ps_args)

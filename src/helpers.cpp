@@ -21,11 +21,11 @@ void fill_args(prefix_sum_args_t *args,
                bool spin,
                int (*op)(int, int, int),
                int n_loops,
-               pthread_barrier_t barrier,
+               pthread_barrier_t *barrier,
                int pad_length) {
     for (int i = 0; i < n_threads; ++i) {
         args[i] = {inputs, outputs, spin, n_vals,
-                   n_threads, i, op, n_loops, barrier};
+                   n_threads, i, op, n_loops, barrier, pad_length};
     }
 }
 
