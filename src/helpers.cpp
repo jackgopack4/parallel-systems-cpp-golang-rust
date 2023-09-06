@@ -30,5 +30,5 @@ void fill_args(prefix_sum_args_t *args,
 }
 
 pthread_barrier_t* alloc_barriers(int n_barriers) {
-    return (pthread_barrier_t*) malloc(n_barriers *sizeof(pthread_barrier_t));
+    return (pthread_barrier_t*) malloc((n_barriers+1) *sizeof(pthread_barrier_t));
 }

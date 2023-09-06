@@ -15,8 +15,8 @@ void read_file(struct options_t* args,
 	int pad_size = next_power_of_two(*n_vals);
 	std::cout << "pad_size = " <<pad_size << " " <<"\n";
 	// Alloc input and output arrays
-	*input_vals = (int*) malloc(pad_size * sizeof(int));
-	*output_vals = (int*) malloc(pad_size * sizeof(int));
+	*input_vals = (int*) malloc((pad_size+1) * sizeof(int));
+	*output_vals = (int*) malloc((pad_size+1) * sizeof(int));
 
 	// Read input vals
 	for (int i = 0; i < *n_vals; ++i) {
@@ -40,8 +40,9 @@ void write_file(struct options_t*         args,
 
 	out.flush();
 	out.close();
-	
+	std::cout << "wrote file, about to free inputs/outputs\n";
 	// Free memory
 	free(opts->input_vals);
 	free(opts->output_vals);
+	std::cout << "freed input and output vals\n";
 }

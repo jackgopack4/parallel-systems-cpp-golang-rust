@@ -22,19 +22,35 @@ void* compute_prefix_sum(void *a)
      //start_threads(threads, opts.n_threads, ps_args, &function_pointer);
     int n_threads = args->n_threads;
     int t_id = args->t_id;
-    //int n_loops = args->n_loops;
-    int n_vals = args->n_vals;
+    int n_loops = args->n_loops;
+    //int n_vals = args->n_vals;
     int pad_length = args->pad_length;
+    int (*scan_operator)(int, int, int);
+    scan_operator = args->op;
     //pthread_barrier_t barrier = args->barrier;
     cout << "t_id = " << t_id << "\n";
     //cout << "barrier: " << &args->barrier << "\n";
     // reduction phase
+
+    cout << "input_vals before scan:\n";
+    cout << "{ ";
+    for(auto idx=0;idx<pad_length;++idx) {
+        cout << args->input_vals[idx] << " ";
+    }
+    cout << "}\n";
+    cout << "output_vals before scan:\n";
+    cout << "{ ";
+    for(auto idx=0;idx<pad_length;++idx) {
+        cout << args->output_vals[idx] << " ";
+    }
+    cout << "}\n";
+
     for (auto stride = 2; stride <= args->pad_length; stride *= 2) {
         cout << "stride = " << stride << "\n";
         auto index = t_id*stride+stride-1;
         while(index < pad_length) {
             cout << "index = " << index << "\n";
-            args->output_vals[index] += args->output_vals[index-stride/2];
+            args->output_vals[index] = scan_operator(args->output_vals[index],args->output_vals[index-stride/2],n_loops) ;
             index += stride*n_threads;
         }
         cout << "thread " << t_id << " waiting for barrier.\n";
@@ -43,7 +59,7 @@ void* compute_prefix_sum(void *a)
     }
     cout << "output_vals after upsweep:\n";
     cout << "{ ";
-    for(auto idx=0;idx<n_vals;++idx) {
+    for(auto idx=0;idx<pad_length;++idx) {
         cout << args->output_vals[idx] << " ";
     }
     cout << "}\n";

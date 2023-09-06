@@ -34,13 +34,22 @@ int main(int argc, char **argv)
     read_file(&opts, &n_vals, &input_vals, &output_vals);
     //printf((char*)input_vals);
     //auto input_size = std::size(&input_vals);
+
+    auto pad_length = next_power_of_two(n_vals);
+    /*
     cout << "input_vals before scan:\n";
     cout << "{ ";
-    for(auto idx=0;idx<n_vals;++idx) {
+    for(auto idx=0;idx<pad_length;++idx) {
         cout << input_vals[idx] << " ";
     }
     cout << "}\n";
-    int pad_length = next_power_of_two(n_vals);
+    cout << "output_vals before scan:\n";
+    cout << "{ ";
+    for(auto idx=0;idx<pad_length;++idx) {
+        cout << output_vals[idx] << " ";
+    }
+    cout << "}\n";
+    */
     //"op" is the operator you have to use, but you can use "add" to test
     int (*scan_operator)(int, int, int);
     scan_operator = op;
@@ -66,7 +75,7 @@ int main(int argc, char **argv)
         }
     }
     else {
-        for (auto i = 0; i< n_vals; ++i) {
+        for (auto i = 0; i< pad_length; ++i) {
             ps_args->output_vals[i] = ps_args->input_vals[i];
         }
         //pthread_barrier_init(barrier, NULL, opts.n_threads);
@@ -88,6 +97,9 @@ int main(int argc, char **argv)
 
     // Free other buffers
     free(threads);
+    std::cout << "threads freed\n";
     free(ps_args);
+    std::cout << "ps_args freed\n";
     free(barrier);
+    std::cout << "barrier freed\n";
 }
