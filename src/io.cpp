@@ -11,19 +11,19 @@ void read_file(struct options_t* args,
 	in.open(args->in_file);
 	// Get num vals
 	in >> *n_vals;
-	std::cout <<"n_vals = " << *n_vals << "\n";
-	int pad_size = next_power_of_two(*n_vals);
-	std::cout << "pad_size = " <<pad_size << " " <<"\n";
+	//std::cout <<"n_vals = " << *n_vals << "\n";
+	auto pad_size = next_power_of_two(*n_vals);
+	//std::cout << "pad_size = " <<pad_size << " " <<"\n";
 	// Alloc input and output arrays
-	*input_vals = (int*) malloc((pad_size+1) * sizeof(int));
-	*output_vals = (int*) malloc((pad_size+1) * sizeof(int));
+	*input_vals = (int*) malloc(pad_size * sizeof(int));
+	*output_vals = (int*) malloc(pad_size * sizeof(int));
 
 	// Read input vals
 	for (int i = 0; i < *n_vals; ++i) {
 		in >> (*input_vals)[i];
 	}
-	for (int i=*n_vals; i<pad_size; ++i) {
-		input_vals[i] = 0;
+	for (int j=*n_vals; j<pad_size; ++j) {
+		(*input_vals)[j] = 0;
 	}
 }
 
@@ -40,9 +40,10 @@ void write_file(struct options_t*         args,
 
 	out.flush();
 	out.close();
-	std::cout << "wrote file, about to free inputs/outputs\n";
+	//std::cout << "wrote file, about to free inputs/outputs\n";
 	// Free memory
 	free(opts->input_vals);
 	free(opts->output_vals);
-	std::cout << "freed input and output vals\n";
+    //free(opts->barrier);
+	//std::cout << "freed input and output vals\n";
 }

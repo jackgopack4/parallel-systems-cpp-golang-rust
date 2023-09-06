@@ -1,7 +1,8 @@
 #include "helpers.h"
-#include <pthread.h>
 
+using namespace std;
 prefix_sum_args_t* alloc_args(int n_threads) {
+    //cout << "alloc args for n_threads = " << n_threads << "\n";
   return (prefix_sum_args_t*) malloc(n_threads * sizeof(prefix_sum_args_t));
 }
 
@@ -23,12 +24,11 @@ void fill_args(prefix_sum_args_t *args,
                int n_loops,
                pthread_barrier_t *barrier,
                int pad_length) {
-    for (int i = 0; i < n_threads; ++i) {
-        args[i] = {inputs, outputs, spin, n_vals,
-                   n_threads, i, op, n_loops, barrier, pad_length};
+    for (auto i = 0; i < n_threads; ++i) {
+        args[i] = {inputs, outputs, spin, n_vals, n_threads, i, op, n_loops, barrier, pad_length};
     }
 }
 
 pthread_barrier_t* alloc_barriers(int n_barriers) {
-    return (pthread_barrier_t*) malloc((n_barriers+1) *sizeof(pthread_barrier_t));
+    return (pthread_barrier_t*) malloc(n_barriers *sizeof(pthread_barrier_t));
 }

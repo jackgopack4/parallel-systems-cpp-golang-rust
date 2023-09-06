@@ -11,7 +11,7 @@ compile:
 	$(CC) $(SRCS) $(OPTS) -I$(INC) -o $(EXEC)
 
 compile2:
-	$(CC) $(SRCS) -std=c++17 -Wall -Werror -lpthread -I$(INC) -o $(EXEC) -g3
+	$(CC) $(SRCS) -std=c++17 -Wall -Werror -lpthread -O -g3 -I$(INC) -o $(EXEC) 
 clean:
 	rm -f $(EXEC)
 

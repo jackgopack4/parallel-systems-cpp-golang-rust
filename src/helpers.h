@@ -31,7 +31,7 @@ void fill_args(prefix_sum_args_t *args,
                bool spin,
                int (*op)(int, int, int),
                int n_loops,
-               pthread_barrier_t* barrier,
+               pthread_barrier_t *barrier,
                int pad_length);
 
 pthread_barrier_t* alloc_barriers(int n_barriers);

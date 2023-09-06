@@ -29,37 +29,23 @@ int main(int argc, char **argv)
 
     // Setup args & read input data
     prefix_sum_args_t *ps_args = alloc_args(opts.n_threads);
+    pthread_barrier_t *barrier = alloc_barriers(1);
     int n_vals;
     int *input_vals, *output_vals;
     read_file(&opts, &n_vals, &input_vals, &output_vals);
-    //printf((char*)input_vals);
-    //auto input_size = std::size(&input_vals);
 
     auto pad_length = next_power_of_two(n_vals);
-    /*
-    cout << "input_vals before scan:\n";
-    cout << "{ ";
-    for(auto idx=0;idx<pad_length;++idx) {
-        cout << input_vals[idx] << " ";
-    }
-    cout << "}\n";
-    cout << "output_vals before scan:\n";
-    cout << "{ ";
-    for(auto idx=0;idx<pad_length;++idx) {
-        cout << output_vals[idx] << " ";
-    }
-    cout << "}\n";
-    */
+
     //"op" is the operator you have to use, but you can use "add" to test
     int (*scan_operator)(int, int, int);
-    scan_operator = op;
-    //scan_operator = add;
+    //scan_operator = op;
+    scan_operator = add;
 
-    pthread_barrier_t *barrier = alloc_barriers(1);
-    auto err = pthread_barrier_init(barrier, NULL, opts.n_threads);
-    cout << "pthread_barrier returned " << err << " with value of " << opts.n_threads << ".\n";
+    //pthread_barrier_t *barrier = alloc_barriers(1);
+    //cout << "pthread_barrier returned " << err << " with value of " << opts.n_threads << ".\n";
     fill_args(ps_args, opts.n_threads, n_vals, input_vals, output_vals,
         opts.spin, scan_operator, opts.n_loops, barrier,pad_length);
+    pthread_barrier_init(barrier, NULL, opts.n_threads);
 
     // Start timer
     auto start = std::chrono::high_resolution_clock::now();
@@ -84,9 +70,10 @@ int main(int argc, char **argv)
         //compute_prefix_sum(ps_args)
         // Wait for threads to finish
         join_threads(threads, opts.n_threads);
+        
         //free(barriers);
     }
-
+    pthread_barrier_destroy(barrier);
     //End timer and print out elapsed
     auto end = std::chrono::high_resolution_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -97,9 +84,11 @@ int main(int argc, char **argv)
 
     // Free other buffers
     free(threads);
-    std::cout << "threads freed\n";
+    //std::cout << "threads freed\n";
     free(ps_args);
-    std::cout << "ps_args freed\n";
     free(barrier);
-    std::cout << "barrier freed\n";
+    //std::cout << "ps_args freed\n";
+    //pthread_barrier_destroy(barrier);
+    //free(barrier);
+    //std::cout << "barrier freed\n";
 }
