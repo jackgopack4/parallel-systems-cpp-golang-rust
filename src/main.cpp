@@ -38,8 +38,8 @@ int main(int argc, char **argv)
 
     //"op" is the operator you have to use, but you can use "add" to test
     int (*scan_operator)(int, int, int);
-    //scan_operator = op;
-    scan_operator = add;
+    scan_operator = op;
+    //scan_operator = add;
 
     //pthread_barrier_t *barrier = alloc_barriers(1);
     //cout << "pthread_barrier returned " << err << " with value of " << opts.n_threads << ".\n";
