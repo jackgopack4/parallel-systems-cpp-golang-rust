@@ -1,3 +1,4 @@
 temp.txt
 valgrind-output.txt
 bin/
+valgrind-out.txt
