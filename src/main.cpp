@@ -61,9 +61,12 @@ int main(int argc, char **argv)
         }
     }
     else {
+        memcpy(output_vals,input_vals,sizeof(int)*pad_length);
+        /*
         for (auto i = 0; i< pad_length; ++i) {
             ps_args->output_vals[i] = ps_args->input_vals[i];
         }
+        */
         //pthread_barrier_init(barrier, NULL, opts.n_threads);
         //pthread_barrier_init(&pre_reverse, NULL, opts.n_threads);
         start_threads(threads, opts.n_threads, ps_args, &compute_prefix_sum);
