@@ -4,11 +4,12 @@
 #include <io.h>
 #include <chrono>
 #include <cstring>
+//#include <vector>
+//#include <iterator>
 #include "operators.h"
 #include "helpers.h"
 #include "prefix_sum.h"
-#include <vector>
-#include <iterator>
+#include "spin_barrier.h"
 
 using namespace std;
 
@@ -30,6 +31,8 @@ int main(int argc, char **argv)
     // Setup args & read input data
     prefix_sum_args_t *ps_args = alloc_args(opts.n_threads);
     pthread_barrier_t *barrier = alloc_barriers(1);
+    spin_barrier *spinbar = new spin_barrier;
+    cout << spinbar->barrier_init(0) << "\n";
     int n_vals;
     int *input_vals, *output_vals;
     read_file(&opts, &n_vals, &input_vals, &output_vals);
@@ -41,16 +44,12 @@ int main(int argc, char **argv)
     scan_operator = op;
     //scan_operator = add;
 
-    //pthread_barrier_t *barrier = alloc_barriers(1);
-    //cout << "pthread_barrier returned " << err << " with value of " << opts.n_threads << ".\n";
     fill_args(ps_args, opts.n_threads, n_vals, input_vals, output_vals,
         opts.spin, scan_operator, opts.n_loops, barrier,pad_length);
     pthread_barrier_init(barrier, NULL, opts.n_threads);
 
     // Start timer
     auto start = std::chrono::high_resolution_clock::now();
-
-    //pthread_barrier_t post_reduction, pre_reverse;
 
     if (sequential)  {
         //sequential prefix scan
@@ -62,19 +61,10 @@ int main(int argc, char **argv)
     }
     else {
         memcpy(output_vals,input_vals,sizeof(int)*pad_length);
-        /*
-        for (auto i = 0; i< pad_length; ++i) {
-            ps_args->output_vals[i] = ps_args->input_vals[i];
-        }
-        */
-        //pthread_barrier_init(barrier, NULL, opts.n_threads);
-        //pthread_barrier_init(&pre_reverse, NULL, opts.n_threads);
         start_threads(threads, opts.n_threads, ps_args, &compute_prefix_sum);
-        //compute_prefix_sum(ps_args)
         // Wait for threads to finish
         join_threads(threads, opts.n_threads);
         
-        //free(barriers);
     }
     pthread_barrier_destroy(barrier);
     //End timer and print out elapsed
@@ -87,11 +77,6 @@ int main(int argc, char **argv)
 
     // Free other buffers
     free(threads);
-    //std::cout << "threads freed\n";
     free(ps_args);
     free(barrier);
-    //std::cout << "ps_args freed\n";
-    //pthread_barrier_destroy(barrier);
-    //free(barrier);
-    //std::cout << "barrier freed\n";
 }
