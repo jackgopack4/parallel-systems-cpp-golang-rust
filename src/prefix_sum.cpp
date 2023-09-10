@@ -20,6 +20,7 @@ void* compute_prefix_sum(void *a)
     int pad_length = args->pad_length;
     int (*scan_operator)(int, int, int);
     scan_operator = args->op;
+    bool spin = args->spin;
 
     for (auto stride = 2; stride <= args->pad_length; stride *= 2) {
         auto index = (t_id + 1) * stride - 1;
@@ -27,7 +28,12 @@ void* compute_prefix_sum(void *a)
             args->output_vals[index] = scan_operator(args->output_vals[index],args->output_vals[index-stride/2],n_loops);
             index += stride*n_threads;
         }
-        pthread_barrier_wait((pthread_barrier_t *)args->barrier);
+        if(spin) {
+            args->spinbar->barrier_wait();
+        }
+        else {
+            pthread_barrier_wait((pthread_barrier_t *)args->barrier);
+        }
     }
 
 
@@ -39,7 +45,12 @@ void* compute_prefix_sum(void *a)
             args->output_vals[index+stride/2] = scan_operator(args->output_vals[index],args->output_vals[index+stride/2],n_loops);
             index += stride*n_threads;
         }
-        pthread_barrier_wait((pthread_barrier_t *)args->barrier);
+        if(spin) {
+            args->spinbar->barrier_wait();
+        }
+        else {
+            pthread_barrier_wait((pthread_barrier_t *)args->barrier);
+        }
     }
     
     return 0;
