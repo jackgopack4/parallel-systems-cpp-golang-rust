@@ -8,19 +8,21 @@ struct node {
 
 class spin_barrier {
     private:
-        node thread_tree;
+        struct node *thread_tree;
         std::atomic<bool> *arrive;
         std::atomic<bool> *go;
+        std::atomic<int> arrive_counter;
+        std::atomic<int> go_counter;
         std::atomic<bool> is_initialized;
         std::atomic<bool> is_destroyed;
-        unsigned thread_count;
+        int thread_count;
 
     public: 
-        spin_barrier();
+        spin_barrier(int count);
         ~spin_barrier();
-        int barrier_init(unsigned count);
         int barrier_wait();
-        int barrier_destroy();
+        void init_dfs(node *cur);
+        void free_dfs(node *cur);
 };
 */
 
@@ -28,29 +30,69 @@ class spin_barrier {
  * Your code here...    *
  * or wherever you like *
  ************************/
-
-spin_barrier::spin_barrier() {
-    is_initialized = false;
-    is_destroyed = true;
-    thread_count = 0;
-}
-
-spin_barrier::~spin_barrier() {
-    if(is_initialized && !is_destroyed) {
-        // need to check if we are still waiting, if so return error
+void spin_barrier::init_dfs(node *cur) {
+    auto val = cur->val;
+    if (2*val + 1 < thread_count) {
+        cur->left = (node*) malloc(sizeof(node));
+        cur->left->val = 2*val;
+        cur->right = (node*)malloc(sizeof(node));
+        cur->right->val = 2*val+1;
+        init_dfs(cur->left);
+        init_dfs(cur->right);
+    }
+    else if(2*val < thread_count) {
+        cur->left = (node*)malloc(sizeof(node));
+        cur->left->val = 2*val;
+        cur->right = NULL;
+        init_dfs(cur->left);
+    }
+    else {
+        cur->left = NULL;
+        cur->right = NULL;
     }
 }
 
-int spin_barrier::barrier_init(unsigned count) {
-    return 0;
+void spin_barrier::free_dfs(node *cur) {
+    if(cur->left && cur->right) {
+        free_dfs(cur->right);
+        free_dfs(cur->left);
+        free(cur);
+    }
+    else if(cur->left) {
+        free_dfs(cur->left);
+        free(cur);
+    }
+    else {
+        free(cur);
+    }
+}
+
+// must initialize with set number of threads
+spin_barrier::spin_barrier(int count) {
+    // no error checking currently, must have count larger than 0
+    thread_tree = (node*)malloc(sizeof(node));
+    thread_tree->val = 0;
+    init_dfs(thread_tree);
+    arrive = (std::atomic<bool>*)malloc(count*sizeof(std::atomic<bool>));
+    go = (std::atomic<bool>*)malloc(count*sizeof(std::atomic<bool>));
+    for(auto i=0;i<count;++i) {
+        arrive[i]=false;
+        go[i]=false;
+    }
+    arrive_counter= 0;
+    go_counter= 0;
+    is_initialized = true;
+    is_destroyed = false;
+    thread_count = count;
+}
+
+spin_barrier::~spin_barrier() {
+    // todo: add error validation that we can't destroy while still waiting
+    free(arrive);
+    free(go);
+    free_dfs(thread_tree);
 }
 
 int spin_barrier::barrier_wait() {
-    return 0;
-}
-
-int spin_barrier::barrier_destroy() {
-    // deallocate memory for thread_tree, arrive, and go arrays
-    // set thread_count to 0, is_destroyed = true, is_initialized = false
     return 0;
 }

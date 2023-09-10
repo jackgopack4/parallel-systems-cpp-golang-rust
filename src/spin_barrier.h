@@ -13,19 +13,21 @@ struct node {
 
 class spin_barrier {
     private:
-        node thread_tree;
+        struct node *thread_tree;
         std::atomic<bool> *arrive;
         std::atomic<bool> *go;
+        std::atomic<int> arrive_counter;
+        std::atomic<int> go_counter;
         std::atomic<bool> is_initialized;
         std::atomic<bool> is_destroyed;
-        unsigned thread_count;
+        int thread_count;
 
     public: 
-        spin_barrier();
+        spin_barrier(int count);
         ~spin_barrier();
-        int barrier_init(unsigned count);
         int barrier_wait();
-        int barrier_destroy();
+        void init_dfs(struct node *cur);
+        void free_dfs(struct node *cur);
 };
 
 #endif

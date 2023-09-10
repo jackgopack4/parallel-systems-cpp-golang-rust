@@ -31,7 +31,8 @@ int main(int argc, char **argv)
     // Setup args & read input data
     prefix_sum_args_t *ps_args = alloc_args(opts.n_threads);
     pthread_barrier_t *barrier = alloc_barriers(1);
-    spin_barrier *spinbar = new spin_barrier;
+    pthread_barrier_init(barrier, NULL, opts.n_threads);
+    spin_barrier *spinbar = new spin_barrier(opts.n_threads);
     int n_vals;
     int *input_vals, *output_vals;
     read_file(&opts, &n_vals, &input_vals, &output_vals);
@@ -45,8 +46,7 @@ int main(int argc, char **argv)
 
     fill_args(ps_args, opts.n_threads, n_vals, input_vals, output_vals,
         opts.spin, scan_operator, opts.n_loops, barrier, spinbar, pad_length);
-    pthread_barrier_init(barrier, NULL, opts.n_threads);
-    spinbar->barrier_init(opts.n_threads);
+    //spinbar->barrier_init(opts.n_threads);
 
     // Start timer
     auto start = std::chrono::high_resolution_clock::now();
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         
     }
     pthread_barrier_destroy(barrier);
-    spinbar->barrier_destroy();
+    //spinbar->barrier_destroy();
     //End timer and print out elapsed
     auto end = std::chrono::high_resolution_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
