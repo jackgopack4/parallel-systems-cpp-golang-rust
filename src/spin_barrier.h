@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <iostream>
 #include <atomic>
+#include <semaphore.h>
 /* A tree-based barrier implementation */
 struct node {
   int val;
@@ -14,10 +15,10 @@ struct node {
 class spin_barrier {
     private:
         struct node *thread_tree;
-        std::atomic<bool> *arrive;
-        std::atomic<bool> *go;
-        std::atomic<int> arrive_counter;
-        std::atomic<int> go_counter;
+        sem_t *arrive;
+        sem_t *go;
+        sem_t arrive_counter;
+        sem_t go_counter;
         std::atomic<bool> is_initialized;
         std::atomic<bool> is_destroyed;
         int thread_count;

@@ -9,10 +9,10 @@ struct node {
 class spin_barrier {
     private:
         struct node *thread_tree;
-        std::atomic<bool> *arrive;
-        std::atomic<bool> *go;
-        std::atomic<int> arrive_counter;
-        std::atomic<int> go_counter;
+        sem_t *arrive;
+        sem_t *go;
+        sem_t arrive_counter;
+        sem_t go_counter;
         std::atomic<bool> is_initialized;
         std::atomic<bool> is_destroyed;
         int thread_count;
@@ -73,14 +73,14 @@ spin_barrier::spin_barrier(int count) {
     thread_tree = (node*)malloc(sizeof(node));
     thread_tree->val = 0;
     init_dfs(thread_tree);
-    arrive = (std::atomic<bool>*)malloc(count*sizeof(std::atomic<bool>));
-    go = (std::atomic<bool>*)malloc(count*sizeof(std::atomic<bool>));
+    arrive = (sem_t *)malloc(count*sizeof(sem_t));
+    go     = (sem_t *)malloc(count*sizeof(sem_t));
     for(auto i=0;i<count;++i) {
-        arrive[i]=false;
-        go[i]=false;
+        sem_init(&arrive[i], 0, 0);
+        sem_init(&go[i], 0, 0);
     }
-    arrive_counter= 0;
-    go_counter= 0;
+    sem_init(&arrive_counter, 0, 0);
+    sem_init(&go_counter, 0, 0);
     is_initialized = true;
     is_destroyed = false;
     thread_count = count;
