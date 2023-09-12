@@ -4,50 +4,9 @@
  * Your code here...    *
  * or wherever you like *
  ************************/
- /*
-void spin_barrier::init_dfs(node *cur) {
-    auto val = cur->val;
-    if (2*(val+1) + 1 < thread_count) {
-        cur->left = (node*) malloc(sizeof(node));
-        cur->left->val = 2*(val+1)-1;
-        cur->right = (node*)malloc(sizeof(node));
-        cur->right->val = 2*(val+1);
-        init_dfs(cur->left);
-        init_dfs(cur->right);
-    }
-    else if(2*val < thread_count) {
-        cur->left = (node*)malloc(sizeof(node));
-        cur->left->val = 2*(val+1)-1;
-        cur->right = NULL;
-        init_dfs(cur->left);
-    }
-    else {
-        cur->left = NULL;
-        cur->right = NULL;
-    }
-}
-
-void spin_barrier::free_dfs(node *cur) {
-    if(cur->left && cur->right) {
-        free_dfs(cur->right);
-        free_dfs(cur->left);
-        free(cur);
-    }
-    else if(cur->left) {
-        free_dfs(cur->left);
-        free(cur);
-    }
-    else {
-        free(cur);
-    }
-}
-*/
 // must initialize with set number of threads
 spin_barrier::spin_barrier(int count) {
     // no error checking currently, must have count larger than 0
-    //thread_tree = (node*)malloc(sizeof(node));
-    //thread_tree->val = 0;
-    //init_dfs(thread_tree);
     arrive = (sem_t *)malloc(count*sizeof(sem_t));
     go     = (sem_t *)malloc(count*sizeof(sem_t));
     for(auto i=0;i<count;++i) {
@@ -65,7 +24,6 @@ spin_barrier::~spin_barrier() {
     // todo: add error validation that we can't destroy while still waiting
     free(arrive);
     free(go);
-    //free_dfs(thread_tree);
 }
 
 int spin_barrier::barrier_wait(int t_id) {
