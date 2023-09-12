@@ -40,23 +40,3 @@ for inp in INPUTS:
                     print("thr == seq for -n %d -i %s -l %d!"%(thr,inp,loop))
             else:
                 print("a file does not exist for -n %d -i %s -l %d!"%(thr,inp,loop))
-            
-
-
-'''
-for inp in INPUTS:
-    for loop in LOOPS:
-        csv = []
-        #csv = ["{}/{}".format(inp, loop)]
-        for thr in THREADS:
-            cmd = "./bin/prefix_scan -o temp.txt -n {} -i tests/{} -l {}".format(
-                thr, inp, loop)
-            out = check_output(cmd, shell=True).decode("ascii")
-            m = re.search("time: (.*)", out)
-            if m is not None:
-                time = m.group(1)
-                csv.append(time)
-
-        csvs.append(csv)
-        sleep(0.5)
-'''
