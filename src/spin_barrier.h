@@ -14,7 +14,7 @@ struct node {
 
 class spin_barrier {
     private:
-        struct node *thread_tree;
+        //struct node *thread_tree;
         sem_t *arrive;
         sem_t *go;
         sem_t arrive_counter;
@@ -27,8 +27,8 @@ class spin_barrier {
         spin_barrier(int count);
         ~spin_barrier();
         int barrier_wait(int t_id);
-        void init_dfs(struct node *cur);
-        void free_dfs(struct node *cur);
+        //void init_dfs(struct node *cur);
+        //void free_dfs(struct node *cur);
 };
 
 #endif

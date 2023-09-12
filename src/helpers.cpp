@@ -2,7 +2,6 @@
 
 using namespace std;
 prefix_sum_args_t* alloc_args(int n_threads) {
-    //cout << "alloc args for n_threads = " << n_threads << "\n";
   return (prefix_sum_args_t*) malloc(n_threads * sizeof(prefix_sum_args_t));
 }
 

@@ -4,8 +4,6 @@
 #include <io.h>
 #include <chrono>
 #include <cstring>
-//#include <vector>
-//#include <iterator>
 #include "operators.h"
 #include "helpers.h"
 #include "prefix_sum.h"
@@ -67,7 +65,6 @@ int main(int argc, char **argv)
         
     }
     pthread_barrier_destroy(barrier);
-    //spinbar->barrier_destroy();
     //End timer and print out elapsed
     auto end = std::chrono::high_resolution_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

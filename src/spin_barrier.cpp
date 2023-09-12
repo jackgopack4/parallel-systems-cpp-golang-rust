@@ -1,35 +1,10 @@
 #include <spin_barrier.h>
-/* spin_barrier.h contents for easy review:
-struct node {
-  int val;
-  struct node *left;
-  struct node *right;
-};
-
-class spin_barrier {
-    private:
-        struct node *thread_tree;
-        sem_t *arrive;
-        sem_t *go;
-        sem_t arrive_counter;
-        sem_t go_counter;
-        std::atomic<bool> is_initialized;
-        std::atomic<bool> is_destroyed;
-        int thread_count;
-
-    public: 
-        spin_barrier(int count);
-        ~spin_barrier();
-        int barrier_wait(int t_id);
-        void init_dfs(node *cur);
-        void free_dfs(node *cur);
-};
-*/
 
 /************************
  * Your code here...    *
  * or wherever you like *
  ************************/
+ /*
 void spin_barrier::init_dfs(node *cur) {
     auto val = cur->val;
     if (2*(val+1) + 1 < thread_count) {
@@ -66,13 +41,13 @@ void spin_barrier::free_dfs(node *cur) {
         free(cur);
     }
 }
-
+*/
 // must initialize with set number of threads
 spin_barrier::spin_barrier(int count) {
     // no error checking currently, must have count larger than 0
-    thread_tree = (node*)malloc(sizeof(node));
-    thread_tree->val = 0;
-    init_dfs(thread_tree);
+    //thread_tree = (node*)malloc(sizeof(node));
+    //thread_tree->val = 0;
+    //init_dfs(thread_tree);
     arrive = (sem_t *)malloc(count*sizeof(sem_t));
     go     = (sem_t *)malloc(count*sizeof(sem_t));
     for(auto i=0;i<count;++i) {
@@ -90,7 +65,7 @@ spin_barrier::~spin_barrier() {
     // todo: add error validation that we can't destroy while still waiting
     free(arrive);
     free(go);
-    free_dfs(thread_tree);
+    //free_dfs(thread_tree);
 }
 
 int spin_barrier::barrier_wait(int t_id) {

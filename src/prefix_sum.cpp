@@ -26,7 +26,7 @@ void* compute_prefix_sum(void *a)
 
     for (auto stride = 2; stride <= args->pad_length; stride *= 2) {
         auto index = (t_id + 1) * stride - 1;
-        /*
+        /* Used for testing non-sequential thread execution
         if(index <=rand()) {
             sleep_for(nanoseconds(rand()*rand()));
         }
@@ -48,7 +48,7 @@ void* compute_prefix_sum(void *a)
     
     for (int stride = pad_length / 2; stride >1; stride /= 2) {
         auto index = (t_id + 1) * stride - 1;
-        /*
+        /* used for testing non-sequential thread execution
         if(index >rand()) {
             sleep_for(nanoseconds(rand()*rand()));
         }
