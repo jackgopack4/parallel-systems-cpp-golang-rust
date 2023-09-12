@@ -8,6 +8,8 @@ void* compute_prefix_sum(void *a)
 {
     prefix_sum_args_t *args = (prefix_sum_args_t *)a;
     
+    using namespace std::this_thread; // sleep_for, sleep_until
+    using namespace std::chrono; // nanoseconds, system_clock, seconds
 
     /************************
      * Your code here...    *
@@ -24,12 +26,17 @@ void* compute_prefix_sum(void *a)
 
     for (auto stride = 2; stride <= args->pad_length; stride *= 2) {
         auto index = (t_id + 1) * stride - 1;
+        /*
+        if(index <=rand()) {
+            sleep_for(nanoseconds(rand()*rand()));
+        }
+        */
         while(index < pad_length) {
             args->output_vals[index] = scan_operator(args->output_vals[index],args->output_vals[index-stride/2],n_loops);
             index += stride*n_threads;
         }
         if(spin) {
-            args->spinbar->barrier_wait();
+            args->spinbar->barrier_wait(t_id);
         }
         else {
             pthread_barrier_wait((pthread_barrier_t *)args->barrier);
@@ -41,12 +48,17 @@ void* compute_prefix_sum(void *a)
     
     for (int stride = pad_length / 2; stride >1; stride /= 2) {
         auto index = (t_id + 1) * stride - 1;
+        /*
+        if(index >rand()) {
+            sleep_for(nanoseconds(rand()*rand()));
+        }
+        */
         while(index+stride/2 < pad_length) {
             args->output_vals[index+stride/2] = scan_operator(args->output_vals[index],args->output_vals[index+stride/2],n_loops);
             index += stride*n_threads;
         }
         if(spin) {
-            args->spinbar->barrier_wait();
+            args->spinbar->barrier_wait(t_id);
         }
         else {
             pthread_barrier_wait((pthread_barrier_t *)args->barrier);

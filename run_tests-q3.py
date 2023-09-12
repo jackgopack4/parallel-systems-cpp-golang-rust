@@ -20,7 +20,7 @@ for thr in THREADS:
     csv = []
     #csv = ["{}/{}".format(inp, loop)]
     for loop in LOOPS:
-        cmd = "./bin/prefix_scan -o temp.txt -n {} -i tests/{} -l {}".format(thr, inp, loop)
+        cmd = "./bin/prefix_scan -o temp.txt -n {} -i tests/{} -l {} -s".format(thr, inp, loop)
         out = check_output(cmd, shell=True).decode("ascii")
         m = re.search("time: (.*)", out)
         if m is not None:
@@ -54,13 +54,13 @@ for idx,csv in enumerate(csvs):
 plt.xlabel('number of loops')
 plt.ylabel('total runtime')
 ax.grid()
-plt.title("Runtime vs Loops for %s input" % inp)
+plt.title("Runtime vs Loops for %s input with custom barrier" % inp)
 #plt.yticks(range(0,6000000,500000))
 #plt.yticks(yticks)
 #plt.xticks([0,4,8,12,16,20,24,28,32])
 
 plt.legend()
-out_png = 'graph_part2.png'
+out_png = 'graph_part3.png'
 plt.savefig(out_png, dpi=150)
 plt.show()
 plt.close()

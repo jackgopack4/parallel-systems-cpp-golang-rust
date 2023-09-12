@@ -26,7 +26,7 @@ class spin_barrier {
     public: 
         spin_barrier(int count);
         ~spin_barrier();
-        int barrier_wait();
+        int barrier_wait(int t_id);
         void init_dfs(struct node *cur);
         void free_dfs(struct node *cur);
 };

@@ -20,7 +20,7 @@ class spin_barrier {
     public: 
         spin_barrier(int count);
         ~spin_barrier();
-        int barrier_wait();
+        int barrier_wait(int t_id);
         void init_dfs(node *cur);
         void free_dfs(node *cur);
 };
@@ -32,17 +32,17 @@ class spin_barrier {
  ************************/
 void spin_barrier::init_dfs(node *cur) {
     auto val = cur->val;
-    if (2*val + 1 < thread_count) {
+    if (2*(val+1) + 1 < thread_count) {
         cur->left = (node*) malloc(sizeof(node));
-        cur->left->val = 2*val;
+        cur->left->val = 2*(val+1)-1;
         cur->right = (node*)malloc(sizeof(node));
-        cur->right->val = 2*val+1;
+        cur->right->val = 2*(val+1);
         init_dfs(cur->left);
         init_dfs(cur->right);
     }
     else if(2*val < thread_count) {
         cur->left = (node*)malloc(sizeof(node));
-        cur->left->val = 2*val;
+        cur->left->val = 2*(val+1)-1;
         cur->right = NULL;
         init_dfs(cur->left);
     }
@@ -93,6 +93,42 @@ spin_barrier::~spin_barrier() {
     free_dfs(thread_tree);
 }
 
-int spin_barrier::barrier_wait() {
+int spin_barrier::barrier_wait(int t_id) {
+    if(t_id == 0) {
+        if(2<thread_count) {
+            sem_wait(&arrive[1]);
+            sem_wait(&arrive[2]);
+            sem_post(&go[1]);
+            sem_post(&go[2]);
+        }
+        else if(1<thread_count) {
+            sem_wait(&arrive[1]);
+            sem_post(&go[1]);
+        }
+    }
+    else if((t_id+1) <= (thread_count)/2) {
+        if(2*(t_id+1)<thread_count) {
+            sem_wait(&arrive[2*(t_id+1)-1]);
+            sem_wait(&arrive[2*(t_id+1)]);
+            sem_post(&arrive[t_id]);
+            sem_wait(&go[t_id]);
+            sem_post(&go[2*(t_id+1)-1]);
+            sem_post(&go[2*(t_id+1)]);
+        }
+        else if(2*(t_id+1)-1<thread_count) {
+            sem_wait(&arrive[2*(t_id+1)-1]);
+            sem_post(&arrive[t_id]);
+            sem_wait(&go[t_id]);
+            sem_post(&go[2*(t_id+1)-1]);
+        }
+        else {
+            sem_post(&arrive[t_id]);
+            sem_wait(&go[t_id]);
+        }
+    }
+    else {
+        sem_post(&arrive[t_id]);
+        sem_wait(&go[t_id]);
+    }
     return 0;
 }
