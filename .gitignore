@@ -1,5 +1,5 @@
-temp.txt
-valgrind-output.txt
-bin/
-valgrind-out.txt
-results/
+Lab1/temp.txt
+Lab1/valgrind-output.txt
+Lab1/bin/
+Lab1/valgrind-out.txt
+Lab1/results/
