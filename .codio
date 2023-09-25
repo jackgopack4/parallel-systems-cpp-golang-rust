@@ -14,5 +14,5 @@
         "Box URL SSL": "https://{{domain3000}}/"
   },
   "autogradeTestScripts": [".guides/secure/autograder.sh",".guides/autograder.sh"],
-  "debugger": [{"type":"GDB","command":"./bin/kmeans -k 1 -d 2048 -i input/random-n2048-d16-c16.txt -v seq","before":"","uuid":"de2c343c-9b27-9cad-63cf-fe0884a4e24e","name":"bin/kmeans"}]
+  "debugger": [{"type":"GDB","command":"./bin/kmeans -k 1 -d 2 -i ./input/static-n10-d2-c1.txt -v seq","before":"","uuid":"de2c343c-9b27-9cad-63cf-fe0884a4e24e","name":"bin/kmeans"}]
 }

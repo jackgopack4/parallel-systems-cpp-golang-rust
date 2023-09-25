@@ -14,7 +14,7 @@ void get_opts(int argc,
         std::cout << "\t[Optional] -t <threshold_convergence>" << std::endl;
         std::cout << "\t[Optional] -c" << std::endl;
         std::cout << "\t[Optional] -s <rand_seed>" << std::endl;
-        std::cout << "\t-v <seq, cuda, shmem, thrust>" << std::endl;
+        std::cout << "\t[Optional] -v <seq, cuda, shmem, thrust>" << std::endl;
         exit(0);
     }
 
@@ -24,6 +24,7 @@ void get_opts(int argc,
     opts->threshold = 0.02;
     opts->centroids = false;
     opts->seed = 69;
+    opts->version = 0;
     
     struct option l_opts[] = {
         {"num_cluster", no_argument, NULL, 'k'},
@@ -33,11 +34,16 @@ void get_opts(int argc,
         {"threshold", no_argument, NULL, 't'},
         {"centroids", no_argument, NULL, 'c'},
         {"seed", no_argument, NULL, 's'},
-        {"version", required_argument, NULL, 'v'},
+        {"version", no_argument, NULL, 'v'},
     };
     
     int ind, c;
-    while ((c = getopt_long(argc, argv, "k:d:i:m:t:c:s:v", l_opts, &ind)) != -1)
+    std::string seq{"seq"};
+    std::string cuda{"cuda"};
+    std::string shmem{"shmem"};
+    std::string thrust{"thrust"};
+    std::string arg_version;
+    while ((c = getopt_long(argc, argv, "k:d:i:m:t:c:s:v:", l_opts, &ind)) != -1)
     {
         switch (c)
         {
@@ -65,7 +71,19 @@ void get_opts(int argc,
             opts->seed = atoi((char *)optarg);
             break;
         case 'v':
-            opts->version = (char*) optarg;
+            arg_version = (char*) optarg;
+            if(arg_version.compare(seq) == 0) {
+                opts->version = sequential;
+            }
+            else if (arg_version.compare(cuda) == 0) {
+                opts->version = cuda_basic;
+            }
+            else if (arg_version.compare(shmem) == 0) {
+                opts->version = cuda_shmem;
+            }
+            else if (arg_version.compare(thrust) == 0) {
+                opts->version = cuda_thrust;
+            }
             break;
         case ':':
             std::cerr << argv[0] << ": option -" << (char)optopt << "requires an argument." << std::endl;
