@@ -1,4 +1,4 @@
-#include <argparse.h> 
+#include "argparse.h"
 
 void get_opts(int argc,
               char **argv,
@@ -13,8 +13,8 @@ void get_opts(int argc,
         std::cout << "\t[Optional] -m <max_num_iters>" << std::endl;
         std::cout << "\t[Optional] -t <threshold_convergence>" << std::endl;
         std::cout << "\t[Optional] -c" << std::endl;
-        std::cout << "\t-s <rand_seed>" << std::endl;
-        std::cout << "\t-v <version>" << std::endl;
+        std::cout << "\t[Optional] -s <rand_seed>" << std::endl;
+        std::cout << "\t-v <seq, cuda, shmem, thrust>" << std::endl;
         exit(0);
     }
 
@@ -37,7 +37,7 @@ void get_opts(int argc,
     };
     
     int ind, c;
-    while ((c = getopt_long(argc, argv, "i:o:n:l:s", l_opts, &ind)) != -1)
+    while ((c = getopt_long(argc, argv, "k:d:i:m:t:c:s:v", l_opts, &ind)) != -1)
     {
         switch (c)
         {
@@ -65,19 +65,7 @@ void get_opts(int argc,
             opts->seed = atoi((char *)optarg);
             break;
         case 'v':
-            char* inp = (char *)optarg;
-            if (strcmp(inp,"seq") == 0 || strcmp(inp,"sequential") == 0) {
-                opts->version = sequential;
-            }
-            if (strcmp(inp,"cuda") == 0 || strcmp(inp,"cuda_basic") == 0) {
-                opts->version = cuda_basic;
-            }
-            if (strcmp(inp,"shmem") == 0 || strcmp(inp,"cuda_shmem") == 0) {
-                opts->version = cuda_shmem;
-            }
-            if(strcmp(inp,"thrust") == 0 || strcmp(inp,"cuda_thrust") == 0) {
-                opts->version = cuda_thrust;
-            }
+            opts->version = (char*) optarg;
             break;
         case ':':
             std::cerr << argv[0] << ": option -" << (char)optopt << "requires an argument." << std::endl;
