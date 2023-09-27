@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
-
+#include <string.h>
 
 struct centers {
     int num_centers;

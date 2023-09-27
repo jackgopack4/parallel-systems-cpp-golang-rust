@@ -12,7 +12,7 @@ const int cuda_shmem = 2;
 const int cuda_thrust = 3;
 
 struct options_t {
-    int num_cluster;
+    int num_cluster; // k
     int dims;
     char *in_file;
     int max_num_iter;

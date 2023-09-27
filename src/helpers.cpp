@@ -3,16 +3,16 @@
 centers* alloc_centers(int k, int dims) {
     centers* c = (centers*) malloc(sizeof(centers));
     c->centers = (double**) malloc((k)*sizeof(double*));
-    /*for(auto i=0;i<k;++i) {
+    for(auto i=0;i<k;++i) {
         c->centers[i] = (double*) malloc((dims)*sizeof(double));
-    }*/
+    } // don't need to alloc array space because it is just pointer
     return c;
 }
 
 void free_centers(centers* c) {
-    /*for(auto i=0; i<c->num_centers; ++i) {
+    for(auto i=0; i<c->num_centers; ++i) {
         free(c->centers[i]);
-    }*/ // don't need to free because it's just a pointer to the points struct
+    } // don't need to free because it's just a pointer to the points struct
     free(c->centers);
     free(c);
 }
@@ -24,7 +24,8 @@ void assign_centers(centers* c, points* p, int k, int cmd_seed) {
         int index = kmeans_rand() % p->num_points;
         // you should use the proper implementation of the following
         // code according to your data structure
-        c->centers[i] = p->points_array[index].coords_array;
+        memcpy(c->centers[i],p->points_array[index].coords_array,(p->dims)*sizeof(double));
+        //*c->centers[i] = p->points_array[index].coords_array;
     }
 }
 
