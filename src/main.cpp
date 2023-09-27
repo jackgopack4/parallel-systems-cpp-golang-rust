@@ -17,9 +17,12 @@ int main(int argc, char **argv)
     struct options_t opts;
     get_opts(argc, argv, &opts);
     struct points * input_vals;
+    read_file(&opts,&input_vals); // also allocates input_vals
     
-    read_file(&opts,&input_vals); // allocates input_vals
+    struct centers * centroids = alloc_centers(opts.num_cluster,opts.dims);
+    assign_centers(centroids,input_vals,opts.num_cluster,opts.seed);
 
+    free_centers(centroids);
     free_points(input_vals);
     
     return 0;
