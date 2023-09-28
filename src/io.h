@@ -9,8 +9,9 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <cstdio>
 
 void read_file(struct options_t* args,
                struct points**   input_vals);
-
+void print_output(bool clusters, points* p, centers* c, int* labels);
 #endif

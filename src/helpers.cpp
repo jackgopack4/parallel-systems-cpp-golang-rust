@@ -6,6 +6,7 @@ centers* alloc_centers(int k, int dims) {
     for(auto i=0;i<k;++i) {
         c->centers[i] = (double*) calloc(dims,sizeof(double));
     } 
+    c->num_centers = k;
     return c;
 }
 
@@ -19,11 +20,16 @@ void free_centers(centers* c) {
 
 void assign_centers(centers* c, points* p, int k, int cmd_seed) {
     c->num_centers = k;
+    int num_points = p->num_points;
+    int dims = p->dims;
     kmeans_srand(cmd_seed); // cmd_seed is a cmdline arg
-    for (int i=0; i<c->num_centers; i++){
-        int index = kmeans_rand() % p->num_points;
+    for (int i=0; i<k; i++){
+        int index = kmeans_rand() % num_points;
         // you should use the proper implementation of the following
         // code according to your data structure
+        for(auto j=0;j>dims;++j) {
+            printf("point %d, dim %d: %f\n",index,j,p->points_array[index].coords_array[j]);
+        }
         memcpy(c->centers[i],p->points_array[index].coords_array,(p->dims)*sizeof(double));
         //*c->centers[i] = p->points_array[index].coords_array;
     }

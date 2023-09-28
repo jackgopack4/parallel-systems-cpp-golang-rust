@@ -2,16 +2,24 @@
 
 using namespace std;
 
-void compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
+int* compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
     // book-keeping
   int iterations = 0;
-  centers* oldCentroids = alloc_centers(opts->num_cluster,opts->dims);
-  int* labels = (int*) malloc((input_vals->num_points)*sizeof(int));
+  //int k = centroids->num_centers;
+  //int dims = input_vals->dims;
+  int num_points = input_vals->num_points;
+  //centers* oldCentroids = alloc_centers(k,dims);
+  int* labels = (int*) malloc((num_points)*sizeof(int));
   // core algorithm
-  while(iterations < 100) {
-
-    memcpy(oldCentroids->centers, centroids->centers, (opts->num_cluster)*sizeof(double*));
+  while(iterations < 3) {
+    /*
+    for(auto i=0;i<k;++i) {
+        memcpy(oldCentroids->centers[i],centroids->centers[i],(dims)*sizeof(double));
+    }
+    
+    //memcpy(oldCentroids->centers, centroids->centers, (k)*sizeof(double*));
     oldCentroids->num_centers = centroids->num_centers;
+    */
     ++iterations;
 
     // labels is a mapping from each point in the dataset 
@@ -27,8 +35,9 @@ void compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
     done = iterations > MAX_ITERS || converged(centroids, oldCentroids);
     */
   }
-  free(labels);
-  free_centers(oldCentroids);
+  //free(labels);
+  //free_centers(oldCentroids);
+  return labels;
 }
 
 centers* averageLabeledCentroids(points* p, int* labels, centers* c) {
@@ -37,6 +46,7 @@ centers* averageLabeledCentroids(points* p, int* labels, centers* c) {
     int num_points = p->num_points;
     int* counts = (int*) calloc(k,sizeof(int));
     centers* new_centroids = alloc_centers(k,dims);
+    new_centroids->num_centers = k;
     for(auto i=0;i<num_points;++i) {
         int old_centers_index = labels[i];
         for(auto j=0;j<dims;++j) {
@@ -54,6 +64,7 @@ centers* averageLabeledCentroids(points* p, int* labels, centers* c) {
 
 
     free_centers(c);
+    free(counts);
     return new_centroids;
 }
 
@@ -70,10 +81,12 @@ double euclideanDistance(double* point1, double* point2, int n) {
 }
 
 void findNearestCentroids(int* labels, points* p, centers* c) {
-    for(auto i=0;i<p->num_points;++i) {
+    int num_points = p->num_points;
+    int k = c->num_centers;
+    for(auto i=0;i<num_points;++i) {
         int label = 0;
         double sample_distance = std::numeric_limits<double>::max();
-        for(auto j=0;j<c->num_centers;++j) {
+        for(auto j=0;j<k;++j) {
             double * point_coords =  p->points_array[i].coords_array;
             double tmp = euclideanDistance(point_coords,c->centers[j],p->dims);
             if(tmp < sample_distance) {
