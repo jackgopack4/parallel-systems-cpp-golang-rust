@@ -21,13 +21,40 @@ void compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
     // the new centroids are the average 
     // of all the points that map to each 
     // centroid
+    
+    centroids = averageLabeledCentroids(input_vals, labels, centroids);
     /*
-    centroids = averageLabeledCentroids(dataSet, labels, k);
     done = iterations > MAX_ITERS || converged(centroids, oldCentroids);
     */
   }
   free(labels);
   free_centers(oldCentroids);
+}
+
+centers* averageLabeledCentroids(points* p, int* labels, centers* c) {
+    int k = c->num_centers;
+    int dims = p->dims;
+    int num_points = p->num_points;
+    int* counts = (int*) calloc(k,sizeof(int));
+    centers* new_centroids = alloc_centers(k,dims);
+    for(auto i=0;i<num_points;++i) {
+        int old_centers_index = labels[i];
+        for(auto j=0;j<dims;++j) {
+            new_centroids->centers[old_centers_index][j] += c->centers[old_centers_index][j];
+            counts[old_centers_index] += 1;
+        }
+    }
+    for(auto i=0;i<k;++i) {
+        if (counts[i] > 0) {
+            for(auto j=0;j<dims;++j) {
+                new_centroids->centers[i][j] /= counts[i];
+            }
+        }
+    }
+
+
+    free_centers(c);
+    return new_centroids;
 }
 
 // Function to calculate the Euclidean distance between two n-dimensional points

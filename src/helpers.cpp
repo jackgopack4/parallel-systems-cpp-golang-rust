@@ -4,8 +4,8 @@ centers* alloc_centers(int k, int dims) {
     centers* c = (centers*) malloc(sizeof(centers));
     c->centers = (double**) malloc((k)*sizeof(double*));
     for(auto i=0;i<k;++i) {
-        c->centers[i] = (double*) malloc((dims)*sizeof(double));
-    } // don't need to alloc array space because it is just pointer
+        c->centers[i] = (double*) calloc(dims,sizeof(double));
+    } 
     return c;
 }
 
