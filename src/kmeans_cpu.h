@@ -7,7 +7,7 @@
 #include "helpers.h"
 #include "argparse.h"
 
-int* compute_kmeans(options_t* opts, points* input_vals, centers* centroids);
+void compute_kmeans(options_t* opts, double** points, double*** centroids, int** labels, int num_points);
 double euclideanDistance(double* point1, double* point2, int n);
-void findNearestCentroids(int* labels, points* p, centers* c);
-centers* averageLabeledCentroids(points* p, int* labels, centers* c);
+void findNearestCentroids(int** labels, double** p, double** c, int num_points, int k, int dims);
+void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int dims, int num_points);

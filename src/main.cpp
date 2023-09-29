@@ -23,6 +23,12 @@ int main(int argc, char **argv)
     int dims = opts.dims;
     int cmd_seed = opts.seed;
     bool cluster_output = opts.centroids;
+    if(!cluster_output) {
+        printf("outputing assignment of every point on finish.\n");
+    }
+    else {
+        printf("outputing final centroids on finish.\n");
+    }
     int num_points;
     read_file(&opts,&points,num_points); // also allocates input_vals
     
@@ -31,11 +37,11 @@ int main(int argc, char **argv)
     for(auto i=0;i<k;++i) {
         centroids[i] = (double*) calloc(dims,sizeof(double));
     }
-    int* indices = (int*) malloc(num_points*sizeof(int));
+    int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);
-    //indices = compute_kmeans(&opts,input_vals,centroids);
-    print_output(cluster_output,points,centroids,indices,num_points);
+    compute_kmeans(&opts,points,&centroids,&indices,num_points);
+    print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     free(indices);
     //free_centers(centroids);
     for(auto i=0;i<k;++i) {

@@ -33,6 +33,19 @@ void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points
         }
         */
         memcpy((*c)[i],p[index],(dims)*sizeof(double));
+        /*
+        printf("point at index %d: [ ",i);
+        for(auto j=0;j<dims;++j) {
+            printf("%f ",p[i][j]);
+        }
+        printf("]\n");
+        printf("for centroid %d, random index: %d \n",i,index);
+        printf("centroid %d: [ ",i);
+        for(auto j=0;j<dims;++j) {
+            printf("%f ",(*c)[i][j]);
+        }
+        printf("] \n");
+        */
         //*c->centers[i] = p->points_array[index].coords_array;
     }
 }

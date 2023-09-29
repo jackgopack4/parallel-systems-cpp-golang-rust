@@ -18,27 +18,45 @@ void read_file(struct options_t* args,
     */
     (*points) = (double**) malloc(num_points*sizeof(double*));
     for (int i=0; i < num_points; ++i) {
-        *points[i] = (double*) calloc(n_dims,sizeof(double));
+        (*points)[i] = (double*) calloc(n_dims,sizeof(double));
         std::string in_str;
-        in >> in_str;
-        std::cout << "input_str: " << in_str << "\n";
+        std::getline(in, in_str);
+        //std::cout << "input_str: " << in_str << "\n";
         std::stringstream ss(in_str);
         std::string word;
         ss >> word;
         int j = 0;
         while (ss >> word) {
             double tmp_dbl = std::stod(word);
+            //printf("tmp_dbl = %f\n",tmp_dbl);
             (*points)[i][j] = tmp_dbl;
             ++j;
         }
+        /*
+        printf("point at index %i: [ ",i);
+        for(auto k=0;k<j;++k) {
+            printf("%f, ",(*points)[i][k]);
+        }
+        printf("]\n");
+        */
     }
 }
 
-void print_output(bool clusters, double** p, double** c, int* labels,int num_points) {
+void print_output(bool clusters, double** p, double** c, int* labels,int num_points, int k, int dims) {
     if(!clusters) {
         printf("clusters:");
-        for (int p=0; p < num_points; p++) {
-            printf(" %d", labels[p]);
+        for (int i=0; i < num_points; ++i) {
+            printf(" %d", labels[i]);
+        }
+        printf("\n");
+    }
+    else {
+        for (int i=0;i<k;++i) {
+            printf("%d",i);
+            for (int j=0;j<dims; ++j) {
+                printf(" %f",c[i][j]);
+            }
+            printf("\n");
         }
     }
 }

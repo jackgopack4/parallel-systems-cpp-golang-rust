@@ -22,7 +22,6 @@ void get_opts(int argc,
     opts->centroids = false;
     opts->max_num_iter = 1000;
     opts->threshold = 0.02;
-    opts->centroids = false;
     opts->seed = 69;
     opts->version = 0;
     
@@ -43,7 +42,7 @@ void get_opts(int argc,
     std::string shmem{"shmem"};
     std::string thrust{"thrust"};
     std::string arg_version;
-    while ((c = getopt_long(argc, argv, "k:d:i:m:t:c:s:v:", l_opts, &ind)) != -1)
+    while ((c = getopt_long(argc, argv, "k:d:i:m:t:cs:v:", l_opts, &ind)) != -1)
     {
         switch (c)
         {

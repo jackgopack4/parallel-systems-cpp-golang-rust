@@ -2,16 +2,17 @@
 
 using namespace std;
 
-int* compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
+void compute_kmeans(options_t* opts, double** points, double*** centroids, int** labels, int num_points) {
     // book-keeping
   int iterations = 0;
+  int k = opts->num_cluster;
+  int dims = opts->dims;
   //int k = centroids->num_centers;
   //int dims = input_vals->dims;
-  int num_points = input_vals->num_points;
   //centers* oldCentroids = alloc_centers(k,dims);
-  int* labels = (int*) malloc((num_points)*sizeof(int));
+  //int* labels = (int*) malloc((num_points)*sizeof(int));
   // core algorithm
-  while(iterations < 3) {
+  while(iterations < 100) {
     /*
     for(auto i=0;i<k;++i) {
         memcpy(oldCentroids->centers[i],centroids->centers[i],(dims)*sizeof(double));
@@ -24,48 +25,53 @@ int* compute_kmeans(options_t* opts, points* input_vals, centers* centroids) {
 
     // labels is a mapping from each point in the dataset 
     // to the nearest (euclidean distance) centroid
-    findNearestCentroids(labels, input_vals, centroids);
+    findNearestCentroids(labels, points, *centroids,num_points,k,dims);
 
     // the new centroids are the average 
     // of all the points that map to each 
     // centroid
     
-    centroids = averageLabeledCentroids(input_vals, labels, centroids);
+    averageLabeledCentroids(points, *labels, centroids,k,dims,num_points);
     /*
     done = iterations > MAX_ITERS || converged(centroids, oldCentroids);
     */
   }
   //free(labels);
   //free_centers(oldCentroids);
-  return labels;
 }
 
-centers* averageLabeledCentroids(points* p, int* labels, centers* c) {
-    int k = c->num_centers;
-    int dims = p->dims;
-    int num_points = p->num_points;
+void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int dims, int num_points) {
     int* counts = (int*) calloc(k,sizeof(int));
-    centers* new_centroids = alloc_centers(k,dims);
-    new_centroids->num_centers = k;
+    //centers* new_centroids = alloc_centers(k,dims);
+    double** new_centroids = (double**) malloc(k*sizeof(double*));
+    for(auto i=0;i<k;++i) {
+        new_centroids[i] = (double*) calloc(dims,sizeof(double));
+    }
+    //new_centroids->num_centers = k;
     for(auto i=0;i<num_points;++i) {
-        int old_centers_index = labels[i];
+        counts[labels[i]] += 1;
         for(auto j=0;j<dims;++j) {
-            new_centroids->centers[old_centers_index][j] += c->centers[old_centers_index][j];
-            counts[old_centers_index] += 1;
+            new_centroids[labels[i]][j] += p[i][j];
         }
     }
     for(auto i=0;i<k;++i) {
         if (counts[i] > 0) {
             for(auto j=0;j<dims;++j) {
-                new_centroids->centers[i][j] /= counts[i];
+                new_centroids[i][j] /= counts[i];
             }
         }
     }
+    for (auto i = 0; i < k; ++i) {
+        memcpy((*c)[i], new_centroids[i], dims * sizeof(double));
+    }
+    for(auto i=0;i<k;++i) {
+        free(new_centroids[i]);
+    }
+    free(new_centroids);
 
 
-    free_centers(c);
+    //free_centers(c);
     free(counts);
-    return new_centroids;
 }
 
 // Function to calculate the Euclidean distance between two n-dimensional points
@@ -80,20 +86,17 @@ double euclideanDistance(double* point1, double* point2, int n) {
     return sqrt(sum);
 }
 
-void findNearestCentroids(int* labels, points* p, centers* c) {
-    int num_points = p->num_points;
-    int k = c->num_centers;
+void findNearestCentroids(int** labels, double** p, double** c, int num_points, int k, int dims) {
     for(auto i=0;i<num_points;++i) {
-        int label = 0;
-        double sample_distance = std::numeric_limits<double>::max();
+        int label = (*labels)[i];
+        double distance = euclideanDistance(p[i],c[label],dims);
         for(auto j=0;j<k;++j) {
-            double * point_coords =  p->points_array[i].coords_array;
-            double tmp = euclideanDistance(point_coords,c->centers[j],p->dims);
-            if(tmp < sample_distance) {
-                sample_distance = tmp;
+            double tmp = euclideanDistance(p[i],c[j],dims);
+            if(tmp < distance) {
+                distance = tmp;
                 label = j;
             }
         }
-        labels[i] = label;
+        (*labels)[i] = label;
     }
 }
