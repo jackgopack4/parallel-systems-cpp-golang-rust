@@ -18,19 +18,21 @@ void free_centers(centers* c) {
     free(c);
 }
 
-void assign_centers(centers* c, points* p, int k, int cmd_seed) {
-    c->num_centers = k;
-    int num_points = p->num_points;
-    int dims = p->dims;
+void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points, int dims) {
+    //c->num_centers = k;
+    //int num_points = p->num_points;
+    //int dims = p->dims;
     kmeans_srand(cmd_seed); // cmd_seed is a cmdline arg
     for (int i=0; i<k; i++){
         int index = kmeans_rand() % num_points;
         // you should use the proper implementation of the following
         // code according to your data structure
+        /*
         for(auto j=0;j>dims;++j) {
             printf("point %d, dim %d: %f\n",index,j,p->points_array[index].coords_array[j]);
         }
-        memcpy(c->centers[i],p->points_array[index].coords_array,(p->dims)*sizeof(double));
+        */
+        memcpy((*c)[i],p[index],(dims)*sizeof(double));
         //*c->centers[i] = p->points_array[index].coords_array;
     }
 }

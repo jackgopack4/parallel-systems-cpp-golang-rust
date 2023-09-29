@@ -21,7 +21,7 @@ struct points {
 };
 void free_centers(centers* c);
 centers* alloc_centers(int k, int dims);
-void assign_centers(centers* c, points* p, int k, int cmd_seed);
+void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points, int dims);
 struct points* alloc_points(int dims, int num_points);
 void free_points(points* p);
 int kmeans_rand();

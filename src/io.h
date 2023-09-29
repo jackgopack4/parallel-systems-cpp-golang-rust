@@ -12,6 +12,7 @@
 #include <cstdio>
 
 void read_file(struct options_t* args,
-               struct points**   input_vals);
-void print_output(bool clusters, points* p, centers* c, int* labels);
+               double*** points,
+               int& num_points);
+void print_output(bool clusters, double** p, double** c, int* labels, int num_points);
 #endif

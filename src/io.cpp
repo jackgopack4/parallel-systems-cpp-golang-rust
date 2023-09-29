@@ -1,14 +1,14 @@
 #include "io.h"
 
 void read_file(struct options_t* args,
-               struct points**   input_vals) {
+               double*** points,
+               int& num_points) {
 
   	// Open file, count lines
-    int n_points;
 
     int n_dims = args->dims;
     std::ifstream in(args->in_file);
-    in >> n_points;
+    in >> num_points;
     /*
     std::string unused;
     while ( std::getline(in, unused) )
@@ -16,8 +16,9 @@ void read_file(struct options_t* args,
     in.clear();
     in.seekg(std::ios::beg);
     */
-    *input_vals = alloc_points(n_dims,n_points);
-    for (int i=0; i < n_points; ++i) {
+    (*points) = (double**) malloc(num_points*sizeof(double*));
+    for (int i=0; i < num_points; ++i) {
+        *points[i] = (double*) calloc(n_dims,sizeof(double));
         std::string in_str;
         in >> in_str;
         std::cout << "input_str: " << in_str << "\n";
@@ -26,17 +27,17 @@ void read_file(struct options_t* args,
         ss >> word;
         int j = 0;
         while (ss >> word) {
-            (*input_vals)->points_array[i].coords_array[j] = std::stod(word);
+            double tmp_dbl = std::stod(word);
+            (*points)[i][j] = tmp_dbl;
             ++j;
         }
     }
 }
 
-void print_output(bool clusters, points* p, centers* c, int* labels) {
-    int nPoints = p->num_points;
+void print_output(bool clusters, double** p, double** c, int* labels,int num_points) {
     if(!clusters) {
         printf("clusters:");
-        for (int p=0; p < nPoints; p++) {
+        for (int p=0; p < num_points; p++) {
             printf(" %d", labels[p]);
         }
     }
