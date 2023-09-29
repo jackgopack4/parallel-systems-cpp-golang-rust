@@ -40,10 +40,16 @@ int main(int argc, char **argv)
         centroids[i] = (double*) calloc(dims,sizeof(double));
     }
     int* indices = (int*) calloc(num_points,sizeof(int));
-
+    
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);
+    auto start = std::chrono::high_resolution_clock::now();
     compute_kmeans(&opts,points,&centroids,&indices,num_points);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    //std::cout << "time: " << diff.count() << std::endl;
+     
     print_output(cluster_output,points,centroids,indices,num_points, k, dims);
+    
     free(indices);
     //free_centers(centroids);
     for(auto i=0;i<k;++i) {

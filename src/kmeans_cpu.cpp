@@ -32,6 +32,7 @@ void compute_kmeans(options_t* opts, double** points, double*** centroids, int**
         done = true; // Convergence achieved, exit the loop
     }
   }
+  //std::cout << "iterations: " << iterations << std::endl;
   for(auto i=0;i<k;++i) {
     free(old_centroids[i]);// = (double*) calloc(dims,sizeof(double));
   }
