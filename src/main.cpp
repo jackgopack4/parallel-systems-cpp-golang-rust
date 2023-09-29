@@ -23,12 +23,14 @@ int main(int argc, char **argv)
     int dims = opts.dims;
     int cmd_seed = opts.seed;
     bool cluster_output = opts.centroids;
+    /*
     if(!cluster_output) {
         printf("outputing assignment of every point on finish.\n");
     }
     else {
         printf("outputing final centroids on finish.\n");
     }
+    */
     int num_points;
     read_file(&opts,&points,num_points); // also allocates input_vals
     

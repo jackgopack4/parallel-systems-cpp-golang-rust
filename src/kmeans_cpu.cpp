@@ -6,21 +6,15 @@ void compute_kmeans(options_t* opts, double** points, double*** centroids, int**
     // book-keeping
   int iterations = 0;
   int k = opts->num_cluster;
-  int dims = opts->dims;
-  //int k = centroids->num_centers;
-  //int dims = input_vals->dims;
-  //centers* oldCentroids = alloc_centers(k,dims);
-  //int* labels = (int*) malloc((num_points)*sizeof(int));
+  int dims = opts->dims;\
   // core algorithm
-  while(iterations < 100) {
-    /*
-    for(auto i=0;i<k;++i) {
-        memcpy(oldCentroids->centers[i],centroids->centers[i],(dims)*sizeof(double));
-    }
-    
-    //memcpy(oldCentroids->centers, centroids->centers, (k)*sizeof(double*));
-    oldCentroids->num_centers = centroids->num_centers;
-    */
+  bool done = false;
+  double** old_centroids = (double**) malloc(k*sizeof(double*));
+  double tolerance = 0.001;
+  for(auto i=0;i<k;++i) {
+    old_centroids[i] = (double*) calloc(dims,sizeof(double));
+  }
+  while(!done) {\
     ++iterations;
 
     // labels is a mapping from each point in the dataset 
@@ -30,16 +24,31 @@ void compute_kmeans(options_t* opts, double** points, double*** centroids, int**
     // the new centroids are the average 
     // of all the points that map to each 
     // centroid
-    
+    for (auto i = 0; i < k; ++i) {
+        memcpy(old_centroids[i], (*centroids)[i], dims * sizeof(double));
+    }
     averageLabeledCentroids(points, *labels, centroids,k,dims,num_points);
-    /*
-    done = iterations > MAX_ITERS || converged(centroids, oldCentroids);
-    */
+    if (hasConverged(&old_centroids, centroids, k, dims, tolerance)) {
+        done = true; // Convergence achieved, exit the loop
+    }
   }
-  //free(labels);
-  //free_centers(oldCentroids);
+  for(auto i=0;i<k;++i) {
+    free(old_centroids[i]);// = (double*) calloc(dims,sizeof(double));
+  }
+  free(old_centroids);
+  
 }
-
+bool hasConverged(double*** old_centroids, double*** new_centroids, int k, int dims, double tolerance) {
+    for (int i = 0; i < k; ++i) {
+        for (int j = 0; j < dims; ++j) {
+            double diff = fabs((*old_centroids)[i][j] - (*new_centroids)[i][j]);
+            if (diff > tolerance) {
+                return false; // If any centroid has changed more than tolerance, not converged
+            }
+        }
+    }
+    return true; // Converged
+}
 void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int dims, int num_points) {
     int* counts = (int*) calloc(k,sizeof(int));
     //centers* new_centroids = alloc_centers(k,dims);
