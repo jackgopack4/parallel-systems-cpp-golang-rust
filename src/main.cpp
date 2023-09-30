@@ -23,14 +23,8 @@ int main(int argc, char **argv)
     int dims = opts.dims;
     int cmd_seed = opts.seed;
     bool cluster_output = opts.centroids;
-    /*
-    if(!cluster_output) {
-        printf("outputing assignment of every point on finish.\n");
-    }
-    else {
-        printf("outputing final centroids on finish.\n");
-    }
-    */
+    int v = opts.version;
+
     int num_points;
     read_file(&opts,&points,num_points); // also allocates input_vals
     
@@ -40,15 +34,19 @@ int main(int argc, char **argv)
         centroids[i] = (double*) calloc(dims,sizeof(double));
     }
     int* indices = (int*) calloc(num_points,sizeof(int));
+
+    assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
+
+    if (v == sequential) {
+        auto start = std::chrono::high_resolution_clock::now();
+        compute_kmeans(&opts,points,&centroids,&indices,num_points);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        print_output(cluster_output,points,centroids,indices,num_points, k, dims);
+    }
     
-    assign_centers(&centroids,points,k,cmd_seed, num_points, dims);
-    auto start = std::chrono::high_resolution_clock::now();
-    compute_kmeans(&opts,points,&centroids,&indices,num_points);
-    auto end = std::chrono::high_resolution_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     //std::cout << "time: " << diff.count() << std::endl;
      
-    print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     
     free(indices);
     //free_centers(centroids);

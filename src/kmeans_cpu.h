@@ -4,7 +4,6 @@
 #include <limits>
 #include <string.h>
 
-#include "helpers.h"
 #include "argparse.h"
 
 void compute_kmeans(options_t* opts, double** points, double*** centroids, int** labels, int num_points);

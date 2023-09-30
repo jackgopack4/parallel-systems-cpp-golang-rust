@@ -1,0 +1,212 @@
+#include <cuda_runtime.h>
+#include <iostream>
+#include <stdio.h>
+#include <chrono>
+#include <cstring>
+#include "kmeans_kernel.h"
+
+using namespace std;
+
+int main(int argc, char **argv)
+{
+    // Parse args
+    struct options_t opts;
+    get_opts(argc, argv, &opts);
+    double** points;
+    int k = opts.num_cluster;
+    int dims = opts.dims;
+    int cmd_seed = opts.seed;
+    bool cluster_output = opts.centroids;
+    int v = opts.version;
+
+    int num_points;
+    read_file(&opts,&points,num_points); // also allocates input_vals
+    
+    double** centroids = (double**) malloc(k*sizeof(double*));
+    for(auto i=0;i<k;++i) {
+        centroids[i] = (double*) calloc(dims,sizeof(double));
+    }
+    int* indices = (int*) calloc(num_points,sizeof(int));
+
+    assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
+
+    if (v == cuda_basic) {
+
+        auto start = std::chrono::high_resolution_clock::now();
+        compute_kmeans(&opts,points,&centroids,&indices,num_points);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        //print_output(cluster_output,points,centroids,indices,num_points, k, dims);
+    }
+    
+    //std::cout << "time: " << diff.count() << std::endl;
+     
+    
+    free(indices);
+    //free_centers(centroids);
+    for(auto i=0;i<k;++i) {
+        free(centroids[i]);
+    }
+    free(centroids);
+    //free_points(input_vals);
+    for(auto i=0;i<num_points;++i) {
+        free(points[i]);
+    }
+    free(points);
+    return 0;
+}
+
+void read_file(struct options_t* args,
+               double*** points,
+               int& num_points) {
+
+  	// Open file, count lines
+
+    int n_dims = args->dims;
+    std::ifstream in(args->in_file);
+    in >> num_points;
+    (*points) = (double**) malloc(num_points*sizeof(double*));
+    for (int i=0; i < num_points; ++i) {
+        (*points)[i] = (double*) calloc(n_dims,sizeof(double));
+        std::string in_str;
+        std::getline(in, in_str);
+        std::stringstream ss(in_str);
+        std::string word;
+        ss >> word;
+        int j = 0;
+        while (ss >> word) {
+            double tmp_dbl = std::stod(word);
+            (*points)[i][j] = tmp_dbl;
+            ++j;
+        }
+    }
+}
+
+void print_output(bool clusters, double** p, double** c, int* labels,int num_points, int k, int dims) {
+    if(!clusters) {
+        printf("clusters:");
+        for (int i=0; i < num_points; ++i) {
+            printf(" %d", labels[i]);
+        }
+        printf("\n");
+    }
+    else {
+        for (int i=0;i<k;++i) {
+            printf("%d",i);
+            for (int j=0;j<dims; ++j) {
+                printf(" %f",c[i][j]);
+            }
+            printf("\n");
+        }
+    }
+}
+
+void get_opts(int argc,
+              char **argv,
+              struct options_t *opts)
+{
+    if (argc == 1)
+    {
+        std::cout << "Usage:" << std::endl;
+        std::cout << "\t[Optional] -k <num_cluster>" <<std::endl;
+        std::cout << "\t -d <dims>" << std::endl;
+        std::cout << "\t-i <file_path>" << std::endl;
+        std::cout << "\t[Optional] -m <max_num_iters>" << std::endl;
+        std::cout << "\t[Optional] -t <threshold_convergence>" << std::endl;
+        std::cout << "\t[Optional] -c" << std::endl;
+        std::cout << "\t[Optional] -s <rand_seed>" << std::endl;
+        std::cout << "\t[Optional] -v <seq, cuda, shmem, thrust>" << std::endl;
+        exit(0);
+    }
+
+    opts->num_cluster = 1;
+    opts->centroids = false;
+    opts->max_num_iter = 1000;
+    opts->threshold = 0.02;
+    opts->seed = 69;
+    opts->version = 0;
+    
+    struct option l_opts[] = {
+        {"num_cluster", no_argument, NULL, 'k'},
+        {"dims", required_argument, NULL, 'd'},
+        {"input", required_argument, NULL, 'i'},
+        {"max_num_iter", no_argument, NULL, 'm'},
+        {"threshold", no_argument, NULL, 't'},
+        {"centroids", no_argument, NULL, 'c'},
+        {"seed", no_argument, NULL, 's'},
+        {"version", no_argument, NULL, 'v'},
+    };
+    
+    int ind, c;
+    std::string seq{"seq"};
+    std::string cuda{"cuda"};
+    std::string shmem{"shmem"};
+    std::string thrust{"thrust"};
+    std::string arg_version;
+    while ((c = getopt_long(argc, argv, "k:d:i:m:t:cs:v:", l_opts, &ind)) != -1)
+    {
+        switch (c)
+        {
+        case 0:
+            break;
+        case 'k':
+            opts->num_cluster = atoi((char *)optarg);
+            break;
+        case 'd':
+            opts->dims = atoi((char *)optarg);
+            break;
+        case 'i':
+            opts->in_file = (char *)optarg;
+            break;
+        case 'm':
+            opts->max_num_iter = atoi((char *)optarg);
+            break;
+        case 't':
+            opts->threshold = atof((char *)optarg);
+            break;
+        case 'c':
+            opts->centroids = true;
+            break;
+        case 's':
+            opts->seed = atoi((char *)optarg);
+            break;
+        case 'v':
+            arg_version = (char*) optarg;
+            if(arg_version.compare(seq) == 0) {
+                opts->version = sequential;
+            }
+            else if (arg_version.compare(cuda) == 0) {
+                opts->version = cuda_basic;
+            }
+            else if (arg_version.compare(shmem) == 0) {
+                opts->version = cuda_shmem;
+            }
+            else if (arg_version.compare(thrust) == 0) {
+                opts->version = cuda_thrust;
+            }
+            break;
+        case ':':
+            std::cerr << argv[0] << ": option -" << (char)optopt << "requires an argument." << std::endl;
+            exit(1);
+        }
+    }
+}
+
+static unsigned long int next_idx = 1;
+static unsigned long kmeans_rmax = 32767;
+
+int kmeans_rand() {
+    next_idx = next_idx * 1103515245 + 12345;
+    return (unsigned int)(next_idx/65536) % (kmeans_rmax+1);
+}
+void kmeans_srand(unsigned int seed) {
+    next_idx = seed;
+}
+
+void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points, int dims) {
+    kmeans_srand(cmd_seed); // cmd_seed is a cmdline arg
+    for (int i=0; i<k; i++){
+        int index = kmeans_rand() % num_points;
+        memcpy((*c)[i],p[index],(dims)*sizeof(double));
+    }
+}

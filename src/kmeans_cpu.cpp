@@ -52,7 +52,6 @@ bool hasConverged(double*** old_centroids, double*** new_centroids, int k, int d
 }
 void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int dims, int num_points) {
     int* counts = (int*) calloc(k,sizeof(int));
-    //centers* new_centroids = alloc_centers(k,dims);
     double** new_centroids = (double**) malloc(k*sizeof(double*));
     for(auto i=0;i<k;++i) {
         new_centroids[i] = (double*) calloc(dims,sizeof(double));
@@ -80,7 +79,6 @@ void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int di
     free(new_centroids);
 
 
-    //free_centers(c);
     free(counts);
 }
 

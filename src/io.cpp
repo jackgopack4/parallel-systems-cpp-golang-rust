@@ -9,36 +9,20 @@ void read_file(struct options_t* args,
     int n_dims = args->dims;
     std::ifstream in(args->in_file);
     in >> num_points;
-    /*
-    std::string unused;
-    while ( std::getline(in, unused) )
-        ++n_points;
-    in.clear();
-    in.seekg(std::ios::beg);
-    */
     (*points) = (double**) malloc(num_points*sizeof(double*));
     for (int i=0; i < num_points; ++i) {
         (*points)[i] = (double*) calloc(n_dims,sizeof(double));
         std::string in_str;
         std::getline(in, in_str);
-        //std::cout << "input_str: " << in_str << "\n";
         std::stringstream ss(in_str);
         std::string word;
         ss >> word;
         int j = 0;
         while (ss >> word) {
             double tmp_dbl = std::stod(word);
-            //printf("tmp_dbl = %f\n",tmp_dbl);
             (*points)[i][j] = tmp_dbl;
             ++j;
         }
-        /*
-        printf("point at index %i: [ ",i);
-        for(auto k=0;k<j;++k) {
-            printf("%f, ",(*points)[i][k]);
-        }
-        printf("]\n");
-        */
     }
 }
 
