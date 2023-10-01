@@ -22,8 +22,8 @@ cleancuda:
 
 cudaseq:
 	nvcc -o ./cuda/kmeans.o -c ./cuda/kmeans.cpp
-	nvcc -o ./cuda/kmeans_kernel.o -c ./cuda/kmeans_kernel.cu
-	nvcc -o ./cuda/kmeans ./cuda/kmeans.o ./cuda/kmeans_kernel.o
+	nvcc -o ./cuda/kmeans_kernel.o -c ./cuda/kmeans_kernel.cu -arch=sm_60
+	nvcc -o ./cuda/kmeans ./cuda/kmeans.o ./cuda/kmeans_kernel.o -arch=sm_60
 
 debug: clean compile2
 

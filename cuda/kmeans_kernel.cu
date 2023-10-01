@@ -9,7 +9,8 @@ __global__ void helloFromGPU(void) {
     printf("Hello World from GPU block %d, thread %d!\n",blockIdx.x,threadIdx.x);
 }
 
-void compute_kmeans_cuda(options_t* opts, double** points, double*** centroids, int** labels, int num_points) {    /*
+void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, int** labels, int num_points) {
+    /*
     printf("computing kmeans\n");
     printf("sizeof double: %lu\n",sizeof(double));
     for(auto i=0;i<num_points;++i) {
@@ -42,11 +43,11 @@ void compute_kmeans_cuda(options_t* opts, double** points, double*** centroids, 
     cudaMallocManaged(&centroid_changed, k*sizeof(bool));
 
     /* Copy data from host to device */
-    cudaMemcpy(d_points, points[0], num_points * dims * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_centroids, (*centroids)[0], k * dims * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_old_centroids, (*centroids)[0], k * dims * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_points, points, num_points * dims * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_old_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_labels, (*labels), num_points * sizeof(int), cudaMemcpyHostToDevice);
-
+    cudaDeviceSynchronize();
     while (!done) {
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -77,8 +78,8 @@ void compute_kmeans_cuda(options_t* opts, double** points, double*** centroids, 
     printf("total iterations: %d\n",iterations);
 
     // Copy data back to host
-    cudaMemcpy((*centroids)[0], d_centroids, k * dims * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy((*labels), d_labels, num_points * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(*centroids, d_centroids, k * dims * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(*labels, d_labels, num_points * sizeof(int), cudaMemcpyDeviceToHost);
 
     // Free device memory
     cudaFree(d_points);

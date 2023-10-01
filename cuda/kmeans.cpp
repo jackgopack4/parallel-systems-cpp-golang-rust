@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     // Parse args
     struct options_t opts;
     get_opts(argc, argv, &opts);
-    double** points;
+    double* points;
     int k = opts.num_cluster;
     int dims = opts.dims;
     int cmd_seed = opts.seed;
@@ -17,10 +17,12 @@ int main(int argc, char **argv)
     int num_points;
     read_file(&opts,&points,num_points); // also allocates input_vals
     
-    double** centroids = (double**) malloc(k*sizeof(double*));
+    double* centroids = (double*) malloc(k*dims*sizeof(double*));
+    /*
     for(auto i=0;i<k;++i) {
         centroids[i] = (double*) calloc(dims,sizeof(double));
     }
+    */
     int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
@@ -39,20 +41,24 @@ int main(int argc, char **argv)
     
     free(indices);
     //free_centers(centroids);
+    /*
     for(auto i=0;i<k;++i) {
         free(centroids[i]);
     }
+    */
     free(centroids);
     //free_points(input_vals);
+    /*
     for(auto i=0;i<num_points;++i) {
         free(points[i]);
     }
+    */
     free(points);
     return 0;
 }
 
 void read_file(struct options_t* args,
-               double*** points,
+               double** points,
                int& num_points) {
 
   	// Open file, count lines
@@ -60,9 +66,9 @@ void read_file(struct options_t* args,
     int n_dims = args->dims;
     std::ifstream in(args->in_file);
     in >> num_points;
-    (*points) = (double**) malloc(num_points*sizeof(double*));
+    (*points) = (double*) calloc(num_points*n_dims, sizeof(double));
     for (int i=0; i < num_points; ++i) {
-        (*points)[i] = (double*) calloc(n_dims,sizeof(double));
+        //(*points)[i] = (double*) calloc(n_dims,sizeof(double));
         std::string in_str;
         std::getline(in, in_str);
         std::stringstream ss(in_str);
@@ -71,13 +77,13 @@ void read_file(struct options_t* args,
         int j = 0;
         while (ss >> word) {
             double tmp_dbl = std::stod(word);
-            (*points)[i][j] = tmp_dbl;
+            (*points)[i*n_dims+j] = tmp_dbl;
             ++j;
         }
     }
 }
 
-void print_output(bool clusters, double** p, double** c, int* labels,int num_points, int k, int dims) {
+void print_output(bool clusters, double* p, double* c, int* labels,int num_points, int k, int dims) {
     if(!clusters) {
         printf("clusters:");
         for (int i=0; i < num_points; ++i) {
@@ -89,7 +95,7 @@ void print_output(bool clusters, double** p, double** c, int* labels,int num_poi
         for (int i=0;i<k;++i) {
             printf("%d",i);
             for (int j=0;j<dims; ++j) {
-                printf(" %f",c[i][j]);
+                printf(" %f",c[i*dims + j]);
             }
             printf("\n");
         }
@@ -198,10 +204,10 @@ void kmeans_srand(unsigned int seed) {
     next_idx = seed;
 }
 
-void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points, int dims) {
+void assign_centers(double** c, double* p, int k, int cmd_seed, int num_points, int dims) {
     kmeans_srand(cmd_seed); // cmd_seed is a cmdline arg
     for (int i=0; i<k; i++){
         int index = kmeans_rand() % num_points;
-        memcpy((*c)[i],p[index],(dims)*sizeof(double));
+        memcpy(&(*c)[i*dims],&p[index*dims],(dims)*sizeof(double));
     }
 }
