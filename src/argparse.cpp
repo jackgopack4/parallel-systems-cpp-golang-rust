@@ -21,7 +21,7 @@ void get_opts(int argc,
     opts->num_cluster = 1;
     opts->centroids = false;
     opts->max_num_iter = 1000;
-    opts->threshold = 0.02;
+    opts->threshold = 0.001;
     opts->seed = 69;
     opts->version = 0;
     

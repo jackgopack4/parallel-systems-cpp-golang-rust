@@ -3,6 +3,7 @@
 #include <float.h>
 #include <limits>
 #include <string.h>
+#include <chrono>
 
 #include "argparse.h"
 

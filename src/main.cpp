@@ -1,7 +1,6 @@
 #include <iostream>
 #include <stdio.h>
 #include "io.h"
-#include <chrono>
 #include <cstring>
 #include "argparse.h"
 //#include "operators.h"
@@ -38,10 +37,7 @@ int main(int argc, char **argv)
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
 
     if (v == sequential) {
-        auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans(&opts,points,&centroids,&indices,num_points);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     }
     

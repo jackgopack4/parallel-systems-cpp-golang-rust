@@ -6,31 +6,36 @@ void compute_kmeans(options_t* opts, double** points, double*** centroids, int**
     // book-keeping
   int iterations = 0;
   int k = opts->num_cluster;
-  int dims = opts->dims;\
+  int dims = opts->dims;
+  int max_num_iter = opts->max_num_iter;
   // core algorithm
   bool done = false;
   double** old_centroids = (double**) malloc(k*sizeof(double*));
-  double tolerance = 0.001;
+  double tolerance = opts->threshold;
   for(auto i=0;i<k;++i) {
     old_centroids[i] = (double*) calloc(dims,sizeof(double));
   }
-  while(!done) {\
+  while(!done) {
+    auto start = std::chrono::high_resolution_clock::now();
+    
     ++iterations;
 
     // labels is a mapping from each point in the dataset 
     // to the nearest (euclidean distance) centroid
     findNearestCentroids(labels, points, *centroids,num_points,k,dims);
 
-    // the new centroids are the average 
-    // of all the points that map to each 
-    // centroid
+    // the new centroids are the average of 
+    // all the points that map to each centroid
     for (auto i = 0; i < k; ++i) {
         memcpy(old_centroids[i], (*centroids)[i], dims * sizeof(double));
     }
     averageLabeledCentroids(points, *labels, centroids,k,dims,num_points);
-    if (hasConverged(&old_centroids, centroids, k, dims, tolerance)) {
+    if (iterations == max_num_iter || hasConverged(&old_centroids, centroids, k, dims, tolerance)) {
         done = true; // Convergence achieved, exit the loop
     }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   }
   //std::cout << "iterations: " << iterations << std::endl;
   for(auto i=0;i<k;++i) {
@@ -82,7 +87,6 @@ void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int di
     free(counts);
 }
 
-// Function to calculate the Euclidean distance between two n-dimensional points
 double euclideanDistance(double* point1, double* point2, int n) {
     double sum = 0.0;
 

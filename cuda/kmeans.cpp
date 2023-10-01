@@ -1,9 +1,4 @@
-#include <cuda_runtime.h>
-#include <iostream>
-#include <stdio.h>
-#include <chrono>
-#include <cstring>
-#include "kmeans_kernel.h"
+#include "kmeans.h"
 
 using namespace std;
 
@@ -33,13 +28,13 @@ int main(int argc, char **argv)
     if (v == cuda_basic) {
 
         auto start = std::chrono::high_resolution_clock::now();
-        compute_kmeans(&opts,points,&centroids,&indices,num_points);
+        compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
         auto end = std::chrono::high_resolution_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "total time: " << diff.count() << std::endl;
         //print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     }
     
-    //std::cout << "time: " << diff.count() << std::endl;
      
     
     free(indices);
