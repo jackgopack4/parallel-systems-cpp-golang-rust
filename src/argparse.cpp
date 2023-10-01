@@ -61,7 +61,7 @@ void get_opts(int argc,
             opts->max_num_iter = atoi((char *)optarg);
             break;
         case 't':
-            opts->threshold = atof((char *)optarg);
+            opts->threshold = atof((char *)optarg) / 10000;
             break;
         case 'c':
             opts->centroids = true;

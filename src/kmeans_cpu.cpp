@@ -2,87 +2,97 @@
 
 using namespace std;
 
-void compute_kmeans(options_t* opts, double** points, double*** centroids, int** labels, int num_points) {
+void compute_kmeans(options_t* opts, double* points, double** centroids, int** labels, int num_points) {
     // book-keeping
-  int iterations = 0;
-  int k = opts->num_cluster;
-  int dims = opts->dims;
-  int max_num_iter = opts->max_num_iter;
-  // core algorithm
-  bool done = false;
-  double** old_centroids = (double**) malloc(k*sizeof(double*));
-  double tolerance = opts->threshold;
-  for(auto i=0;i<k;++i) {
-    old_centroids[i] = (double*) calloc(dims,sizeof(double));
-  }
-  while(!done) {
+    int iterations = 0;
+    int k = opts->num_cluster;
+    int dims = opts->dims;
+    int max_num_iter = opts->max_num_iter;
+    // core algorithm
+    bool done = false;
+    double* old_centroids = (double*) calloc(k*dims,sizeof(double));
+    double tolerance = opts->threshold;
+    /*
+    printf("iteration %d:\n",iterations);
+        for (int i=0;i<k;++i) {
+            printf("%d",i);
+            for (int j=0;j<dims; ++j) {
+                printf(" %f",(*centroids)[i*dims + j]);
+            }
+            printf("\n");
+        }
+    */
     auto start = std::chrono::high_resolution_clock::now();
-    
-    ++iterations;
+    while(!done) {
 
-    // labels is a mapping from each point in the dataset 
-    // to the nearest (euclidean distance) centroid
-    findNearestCentroids(labels, points, *centroids,num_points,k,dims);
+        ++iterations;
 
-    // the new centroids are the average of 
-    // all the points that map to each centroid
-    for (auto i = 0; i < k; ++i) {
-        memcpy(old_centroids[i], (*centroids)[i], dims * sizeof(double));
+        // labels is a mapping from each point in the dataset 
+        // to the nearest (euclidean distance) centroid
+        bool first_time = (iterations == 1);
+        findNearestCentroids(labels, points, *centroids,num_points,k,dims,first_time);
+
+        // the new centroids are the average of 
+        // all the points that map to each centroid
+        memcpy(old_centroids, (*centroids), k*dims*sizeof(double));
+        memset((*centroids),0,k*dims*sizeof(double));
+
+        averageLabeledCentroids(points, *labels, centroids,k,dims,num_points);
+        if (iterations == max_num_iter || hasConverged(old_centroids, *centroids, k, dims, tolerance)) {
+            done = true; // Convergence achieved, exit the loop
+        }
+        /*
+        printf("old centroids, iteration %d:\n",iterations);
+        for (int i=0;i<k;++i) {
+            printf("%d",i);
+            for (int j=0;j<dims; ++j) {
+                printf(" %f",old_centroids[i*dims + j]);
+            }
+            printf("\n");
+        }
+
+        printf("new centroids, iteration %d:\n",iterations);
+        for (int i=0;i<k;++i) {
+            printf("%d",i);
+            for (int j=0;j<dims; ++j) {
+                printf(" %f",(*centroids)[i*dims + j]);
+            }
+            printf("\n");
+        }
+        */
+
     }
-    averageLabeledCentroids(points, *labels, centroids,k,dims,num_points);
-    if (iterations == max_num_iter || hasConverged(&old_centroids, centroids, k, dims, tolerance)) {
-        done = true; // Convergence achieved, exit the loop
-    }
-
     auto end = std::chrono::high_resolution_clock::now();
-    auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  }
-  //std::cout << "iterations: " << iterations << std::endl;
-  for(auto i=0;i<k;++i) {
-    free(old_centroids[i]);// = (double*) calloc(dims,sizeof(double));
-  }
-  free(old_centroids);
+    std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
+    printf("%d,%lf\n", iterations, diff.count()/iterations);
+    free(old_centroids);
   
 }
-bool hasConverged(double*** old_centroids, double*** new_centroids, int k, int dims, double tolerance) {
+bool hasConverged(double* old_centroids, double* new_centroids, int k, int dims, double tolerance) {
     for (int i = 0; i < k; ++i) {
-        for (int j = 0; j < dims; ++j) {
-            double diff = fabs((*old_centroids)[i][j] - (*new_centroids)[i][j]);
-            if (diff > tolerance) {
-                return false; // If any centroid has changed more than tolerance, not converged
-            }
+        double diff = euclideanDistance(&old_centroids[i*dims],&new_centroids[i*dims],dims);
+        if (diff > tolerance) {
+            return false;
         }
     }
     return true; // Converged
 }
-void averageLabeledCentroids(double** p, int* labels, double*** c, int k, int dims, int num_points) {
+void averageLabeledCentroids(double* p, int* labels, double** c, int k, int dims, int num_points) {
     int* counts = (int*) calloc(k,sizeof(int));
-    double** new_centroids = (double**) malloc(k*sizeof(double*));
-    for(auto i=0;i<k;++i) {
-        new_centroids[i] = (double*) calloc(dims,sizeof(double));
-    }
-    //new_centroids->num_centers = k;
+
     for(auto i=0;i<num_points;++i) {
         counts[labels[i]] += 1;
         for(auto j=0;j<dims;++j) {
-            new_centroids[labels[i]][j] += p[i][j];
+            (*c)[labels[i] * dims + j] += p[i * dims + j];
         }
     }
     for(auto i=0;i<k;++i) {
         if (counts[i] > 0) {
             for(auto j=0;j<dims;++j) {
-                new_centroids[i][j] /= counts[i];
+                (*c)[i*dims + j] /= counts[i];
             }
         }
     }
-    for (auto i = 0; i < k; ++i) {
-        memcpy((*c)[i], new_centroids[i], dims * sizeof(double));
-    }
-    for(auto i=0;i<k;++i) {
-        free(new_centroids[i]);
-    }
-    free(new_centroids);
-
 
     free(counts);
 }
@@ -98,17 +108,27 @@ double euclideanDistance(double* point1, double* point2, int n) {
     return sqrt(sum);
 }
 
-void findNearestCentroids(int** labels, double** p, double** c, int num_points, int k, int dims) {
+void findNearestCentroids(int** labels, double* p, double* c, int num_points, int k, int dims, bool first_time) {
     for(auto i=0;i<num_points;++i) {
         int label = (*labels)[i];
-        double distance = euclideanDistance(p[i],c[label],dims);
+        double distance;
+        if(first_time) {
+            distance = DBL_MAX;
+        }
+        else {
+            distance = euclideanDistance(&p[i*dims],&c[label*dims],dims);
+        }
         for(auto j=0;j<k;++j) {
-            double tmp = euclideanDistance(p[i],c[j],dims);
+            if (!first_time && j == label) {
+                continue;
+            }
+            double tmp = euclideanDistance(&p[i*dims],&c[j*dims],dims);
             if(tmp < distance) {
                 distance = tmp;
                 label = j;
             }
         }
+        //printf("nearest centroid for point %d: idx %d\n",i,label);
         (*labels)[i] = label;
     }
 }

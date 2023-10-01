@@ -17,43 +17,35 @@ int main(int argc, char **argv)
     struct options_t opts;
     get_opts(argc, argv, &opts);
     //struct points * input_vals;
-    double** points;
+    double* points;
     int k = opts.num_cluster;
     int dims = opts.dims;
     int cmd_seed = opts.seed;
     bool cluster_output = opts.centroids;
-    int v = opts.version;
+    //int v = opts.version;
 
     int num_points;
-    read_file(&opts,&points,num_points); // also allocates input_vals
+    read_file(&opts,&points,&num_points); // also allocates input_vals
     
     //struct centers * centroids = alloc_centers(k, dims);
-    double** centroids = (double**) malloc(k*sizeof(double*));
-    for(auto i=0;i<k;++i) {
-        centroids[i] = (double*) calloc(dims,sizeof(double));
-    }
+    double* centroids = (double*) calloc(k*dims,sizeof(double));
     int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
 
-    if (v == sequential) {
-        compute_kmeans(&opts,points,&centroids,&indices,num_points);
-        print_output(cluster_output,points,centroids,indices,num_points, k, dims);
-    }
+
+    compute_kmeans(&opts,points,&centroids,&indices,num_points);
+    print_output(cluster_output,points,centroids,indices,num_points, k, dims);
+
     
     //std::cout << "time: " << diff.count() << std::endl;
      
     
     free(indices);
     //free_centers(centroids);
-    for(auto i=0;i<k;++i) {
-        free(centroids[i]);
-    }
     free(centroids);
     //free_points(input_vals);
-    for(auto i=0;i<num_points;++i) {
-        free(points[i]);
-    }
+
     free(points);
     return 0;
 }

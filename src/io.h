@@ -12,7 +12,7 @@
 #include <cstdio>
 
 void read_file(struct options_t* args,
-               double*** points,
-               int& num_points);
-void print_output(bool clusters, double** p, double** c, int* labels, int num_points, int k, int dims);
+               double** points,
+               int* num_points);
+void print_output(bool clusters, double* p, double* c, int* labels, int num_points, int k, int dims);
 #endif

@@ -10,10 +10,10 @@ int kmeans_rand() {
 void kmeans_srand(unsigned int seed) {
     next = seed;
 }
-void assign_centers(double*** c, double** p, int k, int cmd_seed, int num_points, int dims) {
+void assign_centers(double** c, double* p, int k, int cmd_seed, int num_points, int dims) {
     kmeans_srand(cmd_seed); // cmd_seed is a cmdline arg
     for (int i=0; i<k; i++){
         int index = kmeans_rand() % num_points;
-        memcpy((*c)[i],p[index],(dims)*sizeof(double));
+        memcpy(&(*c)[i*dims],&p[index*dims],(dims)*sizeof(double));
     }
 }

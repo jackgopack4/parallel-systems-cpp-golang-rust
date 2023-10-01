@@ -28,13 +28,13 @@ int main(int argc, char **argv)
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
 
     if (v == cuda_basic) {
-
+        opts.threshold /= 10000;
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
         auto end = std::chrono::high_resolution_clock::now();
         auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "total time: " << diff.count() << std::endl;
-        //print_output(cluster_output,points,centroids,indices,num_points, k, dims);
+        //std::cout << "total time: " << diff.count() << std::endl;
+        print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     }
     
      
@@ -123,7 +123,7 @@ void get_opts(int argc,
     opts->num_cluster = 1;
     opts->centroids = false;
     opts->max_num_iter = 1000;
-    opts->threshold = 0.02;
+    opts->threshold = 0.00001;
     opts->seed = 69;
     opts->version = 0;
     
