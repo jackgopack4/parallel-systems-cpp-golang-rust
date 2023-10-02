@@ -16,6 +16,7 @@ int main(int argc, char **argv)
 
     int num_points;
     read_file(&opts,&points,&num_points); // also allocates input_vals
+    //printf("read file\n");
     /*
     for(int i=0;i<num_points;++i) {
         printf("point %d: [",i);
@@ -30,9 +31,14 @@ int main(int argc, char **argv)
     int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
-
-    if (v == cuda_basic) {
-        opts.threshold /= 100;
+    //printf("assigned centers\n");
+    if (v == cuda_basic || v == cuda_shmem) {
+        if (v == cuda_basic) {
+            opts.threshold /= 100;
+        }
+        else {
+            opts.threshold /= 1000;
+        }
         //printf("threshold = %0.9f\n",opts.threshold);
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);

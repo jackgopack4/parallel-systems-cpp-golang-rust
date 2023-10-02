@@ -33,4 +33,5 @@ __global__ void averageLabeledCentroids_kernel(double* points, int* labels, doub
 __global__ void updateCentroids_kernel(double* centroids, double* old_centroids, int* counts, int k, int dims, bool* centroid_changed, double tolerance);
 __device__ bool hasConverged(double* old_centroids, double* new_centroids, int k, int dims, double tolerance);
 __global__ void calcDistances_kernel(double* distances, double* points, double* centroids, int num_points, int k, int dims);
+__global__ void calcDistances_shmem_kernel(double* distances, double* points, double* centroids, int num_points, int k, int dims);
 inline void checkCudaError(const char *file, int line);
