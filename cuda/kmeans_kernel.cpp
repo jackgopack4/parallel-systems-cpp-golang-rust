@@ -151,6 +151,8 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
     int lowest_point_idx = (lowest_global_idx-lowest_centroid_idx)/k;
     int l_idx = threadIdx.x; // 0 through 63 for 2048 example, as high as 1023 for large examples
     extern __shared__ double shared_points[]; // size is sizeof(double)*num_points_per_block*dims
+    __shared__ double shared_centroids[1024];
+    int max_shared_centroids_idx = k*dims;
     int size_of_smem = (blockDim.x+k-1)/k;
     size_of_smem *= dims;
     int centroid_idx = idx % k;
@@ -165,6 +167,11 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
         shared_points[l_idx] = points[points_array_idx];
         l_idx += blockDim.x;
     }
+    l_idx = threadIdx.x;
+    while(l_idx < max_shared_centroids_idx && l_idx < 1024) {
+        shared_centroids[l_idx] = centroids[l_idx];
+        l_idx += blockDim.x;
+    }
     __syncthreads();
     /*
     if(idx == 2) {
@@ -177,7 +184,6 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
     
     __syncthreads();
     */
-    l_idx = threadIdx.x;
     //printf("calcDistances_kernel called for idx %d\n",idx);
     if(idx < num_points * k) {
         // shmem_point_idx = point_idx - lowest_point_idx
@@ -187,7 +193,13 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
             printf("point_idx: %d, lowest_pt_idx: %d, shmem_point_idx = %d\n",point_idx,lowest_point_idx,shmem_point_idx);
         }
         */
-        distances[idx] = euclideanDistance(&shared_points[shmem_point_idx * dims], &centroids[centroid_idx * dims], dims);
+        int idx_to_centroid = centroid_idx * dims;
+        if(idx_to_centroid < (1024-dims)) {
+            distances[idx] = euclideanDistance(&shared_points[shmem_point_idx * dims], &shared_centroids[idx_to_centroid], dims);
+        }
+        else {        
+            distances[idx] = euclideanDistance(&shared_points[shmem_point_idx * dims], &centroids[idx_to_centroid], dims);
+        }
         //printf("distance set for point %d centroid %d as %f\n",point_idx,centroid_idx,distances[idx]);
     }
     __syncthreads();
