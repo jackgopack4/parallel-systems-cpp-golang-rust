@@ -21,6 +21,11 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     /* Allocate device memory */
     double *d_points, *d_centroids, *d_old_centroids, *d_distances;
     int *h_counts = (int*) calloc(k,sizeof(int));
+    double *h_distances = (double*) calloc(num_points*k,sizeof(double));
+    //printf("size of distances array: %d\n",num_points*k);
+    for(int i=0;i<num_points*k;++i) {
+        //printf("distances[%d]: %f\n",i,h_distances[i]);
+    }
     int *d_labels, *d_counts;
 
     cudaMalloc((void**)&d_points, num_points * dims * sizeof(double));
@@ -40,27 +45,42 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMemcpy(d_points, points, num_points * dims * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_old_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_distances,h_distances,num_points*k*sizeof(double),cudaMemcpyHostToDevice);
     cudaMemcpy(d_labels, (*labels), num_points * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_counts,h_counts,k*sizeof(int),cudaMemcpyHostToDevice);
+    
     cudaDeviceSynchronize();
     
+    auto start = std::chrono::high_resolution_clock::now();
     while (!done) {
-        auto start = std::chrono::high_resolution_clock::now();
 
         ++iterations;
-
+        bool first_time = (iterations == 1);
         /* Launch CUDA kernels */
-        calcDistances_kernel<<<(num_points*k+255) / 256, 256>>>(&d_distances,d_points, d_centroids, num_points, k, dims);
+        calcDistances_kernel<<<(num_points*k+255) / 256, 256>>>(d_distances,d_points, d_centroids, num_points, k, dims);
         cudaDeviceSynchronize();
+        CUDA_CHECK_ERROR();
 
-        findNearestCentroids_kernel<<<(num_points + 255) / 256, 256>>>(&d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims);
+        findNearestCentroids_kernel<<<(num_points + 127) / 128, 128>>>(d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims, first_time);
         cudaDeviceSynchronize();  // Wait for the kernel to finish
+        CUDA_CHECK_ERROR();
 
-        averageLabeledCentroids_kernel<<<(num_points + 255) / 256, 256>>>(d_points, d_labels, &d_centroids, &d_counts, k, dims, num_points);
-        cudaDeviceSynchronize();  // Wait for the kernel to finish
+        cudaMemcpy(d_old_centroids,d_centroids,k*dims*sizeof(double),cudaMemcpyDeviceToDevice);
+        cudaDeviceSynchronize();
+        CUDA_CHECK_ERROR();
+        cudaMemset(d_centroids,0,k*dims*sizeof(double));
+        cudaMemset(d_counts,0,k*sizeof(int));
+        cudaDeviceSynchronize();
+        CUDA_CHECK_ERROR();
 
-        updateCentroids_kernel<<<(k + 7)/8, 8>>>(&d_centroids, d_old_centroids, d_counts, k, dims, &centroid_changed, tolerance);
+        averageLabeledCentroids_kernel<<<(num_points + 127) / 128, 128>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
         cudaDeviceSynchronize();  // Wait for the kernel to finish
+        CUDA_CHECK_ERROR();
+        //printf("about to call updateCentroids_kernel\n");
+        updateCentroids_kernel<<<(k + 7)/8, 8>>>(d_centroids, d_old_centroids, d_counts, k, dims, centroid_changed, tolerance);
+        cudaDeviceSynchronize();  // Wait for the kernel to finish
+        CUDA_CHECK_ERROR();
+        //printf("finished updateCentroids_kernel\n");
         done = true;
         for(int i=0; i<k; ++i) {
             if (centroid_changed[i]) {
@@ -71,10 +91,12 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
         if(iterations == max_num_iter) {
             done = true;
         }
-        auto end = std::chrono::high_resolution_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         /*printf("runtime for iteration %d: %ld\n",iterations,diff.count());*/
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
+    printf("%d,%lf\n", iterations, diff.count()/iterations);
+        
     /*printf("total iterations: %d\n",iterations);*/
 
     // Copy data back to host
@@ -93,6 +115,53 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     free(h_counts);
 }
 
+__global__ void calcDistances_kernel(double* distances, double* points, double* centroids, int num_points, int k, int dims) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    //printf("calcDistances_kernel called for idx %d\n",idx);
+    if(idx < num_points * k) {
+        int centroid_idx = idx % k;
+        int point_idx = (idx - centroid_idx) / k;
+
+        distances[idx] = euclideanDistance(&points[point_idx * dims], &centroids[centroid_idx * dims], dims);
+        //printf("distance set for point %d centroid %d as %f\n",point_idx,centroid_idx,distances[idx]);
+    }
+}
+
+__global__ void findNearestCentroids_kernel(int* labels, double* points, double* centroids, double* old_centroids, double* distances, int num_points, int k, int dims, bool first_time) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    //printf("called findNearestCentroids_kernel for idx %d\n",idx);
+    if (idx < num_points) {
+        int label = labels[idx];
+        //printf("label = %d\n",label);
+        double distance;
+        if(first_time) {
+            distance = DBL_MAX;
+        }
+        else {
+            int distances_idx = idx * k + label;
+            distance = distances[distances_idx];
+            //printf("initial distance for point %d labeled %d: %f\n",idx,label,distance);
+        }
+        /*double distance = euclideanDistance(&points[idx * dims], &centroids[label * dims], dims); */
+        for (int j = 0; j < k; ++j) {
+            if (!first_time && j == label) {
+                continue;
+            }
+            double tmp = distances[idx*k + j];
+            //printf("dist from point %d [%f, %f] to centroid %d [%f, %f] = %f\n",idx,points[idx*dims],points[idx*dims+1],j,centroids[j*dims],centroids[j*dims+1],tmp);
+            if (tmp < distance) {
+                distance = tmp;
+                label = j;
+            }
+        }
+        //printf("closer distance for point [%f,%f] at centroid %d: [%f, %f]\n",points[idx*dims],points[idx*dims+1],label,centroids[label*dims],centroids[label*dims+1]);
+        labels[idx] = label;
+        //printf("set label for point %d as centroid %d\n",idx,label);
+        //memcpy((void**)&old_centroids[idx * dims], (void**)&centroids[idx * dims], dims* sizeof(double));
+        //memset((void**)&centroids[idx * dims], 0, dims * sizeof(double));	
+    }
+}
+
 __device__ double euclideanDistance(double* point1, double* point2, int k) {
     double sum = 0.0;
 
@@ -104,60 +173,33 @@ __device__ double euclideanDistance(double* point1, double* point2, int k) {
     return sqrt(sum);
 }
 
-__global__ void calcDistances_kernel(double** distances, double* points, double* centroids, int num_points, int k, int dims) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if(idx < num_points * k) {
-        int centroid_idx = idx % num_points;
-        int point_idx = (idx - centroid_idx) / num_points;
-        (*distances)[idx] = euclideanDistance(&points[point_idx * dims], &centroids[centroid_idx * dims], dims);
-    }
-}
 
-__global__ void findNearestCentroids_kernel(int** labels, double* points, double* centroids, double* old_centroids, double* distances, int num_points, int k, int dims) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
+
+__global__ void averageLabeledCentroids_kernel(double* points, int* labels, double* centroids, double* old_centroids,int* counts, int k, int dims, int num_points) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    //printf("averageLabeledCentroids_kernel called for idx %d\n",idx);
     if (idx < num_points) {
-        int label = (*labels)[idx];
-        /*double distance = euclideanDistance(&points[idx * dims], &centroids[label * dims], dims); */
-        int distances_idx = idx * num_points + label;
-        double distance = distances[distances_idx];
-        for (int j = 0; j < k; ++j) {
-            if (j == label) {
-                continue;
-            }
-            double tmp = distances[idx*num_points + j];
-            if (tmp < distance) {
-                distance = tmp;
-                label = j;
-            }
-        }
-        (*labels)[idx] = label;
-        memcpy((void**)&old_centroids[idx * dims], (void**)&centroids[idx * dims], dims* sizeof(double));
-        memset((void**)&centroids[idx * dims], 0, dims * sizeof(double));	
-    }
-}
-
-__global__ void averageLabeledCentroids_kernel(double* points, int* labels, double** centroids, int** counts, int k, int dims, int num_points) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < num_points) {
-        atomicAdd(&(*counts)[labels[idx]], 1);
+        //printf("label for point %d is centroid %d\n",idx,labels[idx]);
+        atomicAdd(&counts[labels[idx]], 1);
+        //printf("counts at %d after add is %d\n",labels[idx],counts[labels[idx]]);
         for (int j = 0; j < dims; ++j) {
-            atomicAdd(&(*centroids)[labels[idx] * dims + j], points[idx * dims + j]);
+            //printf("dim %d value for point %d = %f, for centroid %d = %f\n",j,idx,points[idx*dims+j],labels[idx],old_centroids[labels[idx] * dims + j]);
+            atomicAdd(&centroids[labels[idx] * dims + j], points[idx * dims + j]);
         }
     }
 }
 /* have to break out this step due to kernel synchronization */
-__global__ void updateCentroids_kernel(double** centroids, double* old_centroids, int* counts, int k, int dims, bool** centroid_changed, double tolerance) {
+__global__ void updateCentroids_kernel(double* centroids, double* old_centroids, int* counts, int k, int dims, bool* centroid_changed, double tolerance) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    /*printf("updateCentroids called for idx %d\n",idx);*/
+    //printf("updateCentroids called for idx %d\n",idx);
     if (idx < k) {
         if (counts[idx] > 0) {
             for (int j = 0; j < dims; ++j) {
-                (*centroids)[idx * dims + j] /= counts[idx];
+                centroids[idx * dims + j] /= counts[idx];
             }
         }
-        (*centroid_changed)[idx] = !hasConverged(old_centroids,*centroids,k,dims, tolerance);
+        centroid_changed[idx] = !hasConverged(old_centroids,centroids,k,dims, tolerance);
     }
 }
 
@@ -165,15 +207,17 @@ __device__ bool hasConverged(double* old_centroids, double* new_centroids, int k
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     /*printf("hasConverged called for idx %d\n",idx);*/
     if (idx < k) {
-        for (int j=0; j < dims; ++j) {
-            double diff = fabs((old_centroids)[idx*dims + j] - (new_centroids)[idx * dims + j]);
-            if (diff > tolerance) {
-                /*printf("diff %f more than tolerance %f, centroid %d\n",diff,tolerance,idx);*/
-                return false;
-            }
-        }
-        /*printf("diff less than tolerance %f, centroid %d\n",tolerance,idx);*/
-        return true;
+        double diff = euclideanDistance(&old_centroids[idx*dims],&new_centroids[idx*dims],dims);
+        return (diff <= tolerance);
     }
     return true;
+}
+
+
+inline void checkCudaError(const char *file, int line) {
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA error: " << cudaGetErrorString(err) << " at " << file << ":" << line << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }

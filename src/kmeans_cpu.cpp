@@ -68,6 +68,32 @@ void compute_kmeans(options_t* opts, double* points, double** centroids, int** l
     free(old_centroids);
   
 }
+
+void findNearestCentroids(int** labels, double* p, double* c, int num_points, int k, int dims, bool first_time) {
+    for(auto i=0;i<num_points;++i) {
+        int label = (*labels)[i];
+        double distance;
+        if(first_time) {
+            distance = DBL_MAX;
+        }
+        else {
+            distance = euclideanDistance(&p[i*dims],&c[label*dims],dims);
+        }
+        for(auto j=0;j<k;++j) {
+            if (!first_time && j == label) {
+                continue;
+            }
+            double tmp = euclideanDistance(&p[i*dims],&c[j*dims],dims);
+            if(tmp < distance) {
+                distance = tmp;
+                label = j;
+            }
+        }
+        //printf("nearest centroid for point %d: idx %d\n",i,label);
+        (*labels)[i] = label;
+    }
+}
+
 bool hasConverged(double* old_centroids, double* new_centroids, int k, int dims, double tolerance) {
     for (int i = 0; i < k; ++i) {
         double diff = euclideanDistance(&old_centroids[i*dims],&new_centroids[i*dims],dims);
@@ -108,27 +134,3 @@ double euclideanDistance(double* point1, double* point2, int n) {
     return sqrt(sum);
 }
 
-void findNearestCentroids(int** labels, double* p, double* c, int num_points, int k, int dims, bool first_time) {
-    for(auto i=0;i<num_points;++i) {
-        int label = (*labels)[i];
-        double distance;
-        if(first_time) {
-            distance = DBL_MAX;
-        }
-        else {
-            distance = euclideanDistance(&p[i*dims],&c[label*dims],dims);
-        }
-        for(auto j=0;j<k;++j) {
-            if (!first_time && j == label) {
-                continue;
-            }
-            double tmp = euclideanDistance(&p[i*dims],&c[j*dims],dims);
-            if(tmp < distance) {
-                distance = tmp;
-                label = j;
-            }
-        }
-        //printf("nearest centroid for point %d: idx %d\n",i,label);
-        (*labels)[i] = label;
-    }
-}

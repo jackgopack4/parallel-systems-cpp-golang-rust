@@ -42,9 +42,7 @@ int main(int argc, char **argv)
      
     
     free(indices);
-    //free_centers(centroids);
     free(centroids);
-    //free_points(input_vals);
 
     free(points);
     return 0;

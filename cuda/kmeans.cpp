@@ -15,20 +15,25 @@ int main(int argc, char **argv)
     int v = opts.version;
 
     int num_points;
-    read_file(&opts,&points,num_points); // also allocates input_vals
-    
-    double* centroids = (double*) malloc(k*dims*sizeof(double*));
+    read_file(&opts,&points,&num_points); // also allocates input_vals
     /*
-    for(auto i=0;i<k;++i) {
-        centroids[i] = (double*) calloc(dims,sizeof(double));
+    for(int i=0;i<num_points;++i) {
+        printf("point %d: [",i);
+        for (int j=0;j<dims; ++j) {
+            printf(" %f",points[i*dims + j]);
+        }
+        printf(" ]\n");
     }
     */
+    //printf("num_points = %d\n",num_points);
+    double* centroids = (double*) calloc(k*dims, sizeof(double));
     int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
 
     if (v == cuda_basic) {
-        opts.threshold /= 10000;
+        opts.threshold /= 100000;
+        //printf("threshold = %0.9f\n",opts.threshold);
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
         auto end = std::chrono::high_resolution_clock::now();
@@ -40,44 +45,53 @@ int main(int argc, char **argv)
      
     
     free(indices);
-    //free_centers(centroids);
-    /*
-    for(auto i=0;i<k;++i) {
-        free(centroids[i]);
-    }
-    */
     free(centroids);
-    //free_points(input_vals);
-    /*
-    for(auto i=0;i<num_points;++i) {
-        free(points[i]);
-    }
-    */
     free(points);
     return 0;
 }
 
 void read_file(struct options_t* args,
                double** points,
-               int& num_points) {
+               int* num_points) {
 
   	// Open file, count lines
 
-    int n_dims = args->dims;
+    int k = args->dims;
+    std::string n_string;
+    //printf("dim passed to read_file: %d\n",k);
+    int n = 0;
     std::ifstream in(args->in_file);
-    in >> num_points;
-    (*points) = (double*) calloc(num_points*n_dims, sizeof(double));
-    for (int i=0; i < num_points; ++i) {
-        //(*points)[i] = (double*) calloc(n_dims,sizeof(double));
+    if (in.is_open()) {
+        std::string line;
+        if(std::getline(in,line)) {
+            try {
+                n = std::stoi(line);
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Error: Invalid integer in the file." << std::endl;
+            } catch (const std::out_of_range& e) {
+                std::cerr << "Error: Integer out of range." << std::endl;
+            }
+        } else {
+            std::cerr << "Error: Empty file." << std::endl;
+        }
+    } else {
+        std::cerr << "Error: Unable to open file." << std::endl;
+    }
+    *num_points = n;
+    //printf("num_points: %d\n",n);
+    (*points) = (double*) calloc(k*n,sizeof(double));
+    for (int i=0; i < n; ++i) {
         std::string in_str;
         std::getline(in, in_str);
+        //std::cout << "in_str: " << in_str << "\n";
         std::stringstream ss(in_str);
         std::string word;
         ss >> word;
         int j = 0;
         while (ss >> word) {
             double tmp_dbl = std::stod(word);
-            (*points)[i*n_dims+j] = tmp_dbl;
+            //printf("tmp dbl: %f\n",tmp_dbl);
+            (*points)[i*k+j] = tmp_dbl;
             ++j;
         }
     }
@@ -95,7 +109,7 @@ void print_output(bool clusters, double* p, double* c, int* labels,int num_point
         for (int i=0;i<k;++i) {
             printf("%d",i);
             for (int j=0;j<dims; ++j) {
-                printf(" %f",c[i*dims + j]);
+                printf(" %0.5f",c[i*dims + j]);
             }
             printf("\n");
         }

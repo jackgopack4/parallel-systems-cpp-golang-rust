@@ -59,7 +59,7 @@ void print_output(bool clusters, double* p, double* c, int* labels,int num_point
         for (int i=0;i<k;++i) {
             printf("%d",i);
             for (int j=0;j<dims; ++j) {
-                printf(" %f",c[i*dims + j]);
+                printf(" %0.5f",c[i*dims + j]);
             }
             printf("\n");
         }
