@@ -12,6 +12,7 @@ __global__ void helloFromGPU(void) {
 void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, int** labels, int num_points) {
       /* book-keeping */
     int iterations = 0;
+    //printf("sizeof(int) = %lu\n",sizeof(int));
     int k = opts->num_cluster;
     int dims = opts->dims;
     int max_num_iter = opts->max_num_iter;
@@ -89,8 +90,12 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
         cudaMemset(d_counts,0,k*sizeof(int));
         cudaDeviceSynchronize();
         CUDA_CHECK_ERROR();
-
-        averageLabeledCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+        if(version == cuda_shmem) {
+            averageLabeledCentroids_shmem_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+        }
+        else {
+            averageLabeledCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+        }
         cudaDeviceSynchronize();  // Wait for the kernel to finish
         CUDA_CHECK_ERROR();
         //printf("about to call updateCentroids_kernel\n");
@@ -274,6 +279,41 @@ __global__ void averageLabeledCentroids_kernel(double* points, int* labels, doub
             atomicAdd(&centroids[labels[idx] * dims + j], points[idx * dims + j]);
         }
     }
+}
+__global__ void averageLabeledCentroids_shmem_kernel(double* points, int* labels, double* centroids, double* old_centroids,int* counts, int k, int dims, int num_points) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    __shared__ int shared_counts[128];
+    
+    // Initialize shared counts to zero
+    int l_idx = threadIdx.x;
+    while(l_idx < k) {
+        shared_counts[l_idx] = 0;
+        l_idx += blockDim.x;
+    }
+    l_idx = threadIdx.x;
+    __syncthreads();
+
+    if (idx < num_points) {
+        int label = labels[idx];
+
+        // Atomic add to shared counts
+        atomicAdd(&shared_counts[label], 1);
+
+        for (int j = 0; j < dims; ++j) {
+            // Atomic add to shared centroids
+            atomicAdd(&centroids[label * dims + j], points[idx * dims + j]);
+        }
+    }
+
+    __syncthreads();
+
+    // Atomic add from shared counts to global counts
+    if (threadIdx.x == 0) {
+        for (int i = 0; i < k; ++i) {
+            atomicAdd(&counts[i], shared_counts[i]);
+        }
+    }
+
 }
 /* have to break out this step due to kernel synchronization */
 __global__ void updateCentroids_kernel(double* centroids, double* old_centroids, int* counts, int k, int dims, bool* centroid_changed, double tolerance) {
