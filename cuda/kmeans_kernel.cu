@@ -1,5 +1,5 @@
 #include "kmeans_kernel.h"
-
+#define BLOCK_SIZE 256
 void helloFromGPU_wrapper(int blocks, int threads) {
     helloFromGPU <<<blocks,threads>>>();
     cudaDeviceSynchronize();
@@ -17,6 +17,10 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     int max_num_iter = opts->max_num_iter;
     /* core algorithm */
     bool done = false;
+    int tmp_block_size = num_points / 32;
+    if(tmp_block_size > 1024) {
+        tmp_block_size = 1024;
+    }
     double tolerance = opts->threshold;
     /* Allocate device memory */
     double *d_points, *d_centroids, *d_old_centroids, *d_distances;
@@ -50,36 +54,40 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMemcpy(d_counts,h_counts,k*sizeof(int),cudaMemcpyHostToDevice);
     
     cudaDeviceSynchronize();
-    
     auto start = std::chrono::high_resolution_clock::now();
+    int num_blocks = (num_points*k + tmp_block_size - 1) / tmp_block_size; // Round up to cover all threads
+    int num_threads_per_block = tmp_block_size;
     while (!done) {
+        num_blocks = (num_points*k + tmp_block_size - 1) / tmp_block_size; // Round up to cover all threads
+        num_threads_per_block = tmp_block_size;
 
         ++iterations;
         bool first_time = (iterations == 1);
         /* Launch CUDA kernels */
-        calcDistances_kernel<<<(num_points*k+255) / 256, 256>>>(d_distances,d_points, d_centroids, num_points, k, dims);
+        calcDistances_kernel<<<num_blocks, num_threads_per_block>>>(d_distances,d_points, d_centroids, num_points, k, dims);
         cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
-
-        findNearestCentroids_kernel<<<(num_points + 127) / 128, 128>>>(d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims, first_time);
+        //CUDA_CHECK_ERROR();
+        num_blocks = (num_points + tmp_block_size - 1) / tmp_block_size;
+        findNearestCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims, first_time);
         cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
+        //CUDA_CHECK_ERROR();
 
         cudaMemcpy(d_old_centroids,d_centroids,k*dims*sizeof(double),cudaMemcpyDeviceToDevice);
         cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
+        //CUDA_CHECK_ERROR();
         cudaMemset(d_centroids,0,k*dims*sizeof(double));
         cudaMemset(d_counts,0,k*sizeof(int));
         cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
+        //CUDA_CHECK_ERROR();
 
-        averageLabeledCentroids_kernel<<<(num_points + 127) / 128, 128>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+        averageLabeledCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
         cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
+        //CUDA_CHECK_ERROR();
         //printf("about to call updateCentroids_kernel\n");
-        updateCentroids_kernel<<<(k + 7)/8, 8>>>(d_centroids, d_old_centroids, d_counts, k, dims, centroid_changed, tolerance);
+        num_blocks = (k + tmp_block_size - 1) / tmp_block_size;
+        updateCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_centroids, d_old_centroids, d_counts, k, dims, centroid_changed, tolerance);
         cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
+        //CUDA_CHECK_ERROR();
         //printf("finished updateCentroids_kernel\n");
         done = true;
         for(int i=0; i<k; ++i) {

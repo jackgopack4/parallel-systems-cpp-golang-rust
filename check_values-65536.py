@@ -28,9 +28,9 @@ def euclidean_distance(point1, point2):
     distance = math.sqrt(sum(squared_diff))
     return distance
 # Example usage
-sample_file = 'sample_output/random-n2048-d16-c16-answer.txt'
+sample_file = 'sample_output/random-n65536-d32-c16-answer.txt'
 sample_array = read_double_list_from_file(sample_file)
-result_file = 'output/random-n2048-d16-c16-result.txt'
+result_file = 'output/random-n65536-d32-c16-result.txt'
 result_array = read_double_list_from_file(result_file)
 # Print the result
 print("Sample array:")

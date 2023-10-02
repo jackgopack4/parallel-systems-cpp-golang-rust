@@ -32,7 +32,7 @@ int main(int argc, char **argv)
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
 
     if (v == cuda_basic) {
-        opts.threshold /= 100000;
+        opts.threshold /= 100;
         //printf("threshold = %0.9f\n",opts.threshold);
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
