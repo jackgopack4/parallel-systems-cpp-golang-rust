@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     compute_kmeans(&opts,points,&centroids,&indices,num_points);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
-    std::cout << "total time: " << diff.count() << std::endl;
+    //std::cout << "total time: " << diff.count() << std::endl;
     print_output(cluster_output,points,centroids,indices,num_points, k, dims);
 
     

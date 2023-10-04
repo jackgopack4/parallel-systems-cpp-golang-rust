@@ -16,22 +16,11 @@ int main(int argc, char **argv)
 
     int num_points;
     read_file(&opts,&points,&num_points); // also allocates input_vals
-    //printf("read file\n");
-    /*
-    for(int i=0;i<num_points;++i) {
-        printf("point %d: [",i);
-        for (int j=0;j<dims; ++j) {
-            printf(" %f",points[i*dims + j]);
-        }
-        printf(" ]\n");
-    }
-    */
-    //printf("num_points = %d\n",num_points);
+
     double* centroids = (double*) calloc(k*dims, sizeof(double));
     int* indices = (int*) calloc(num_points,sizeof(int));
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
-    //printf("assigned centers\n");
     if (v == cuda_basic || v == cuda_shmem || v == cuda_thrust) {
         if (v == cuda_basic) {
             opts.threshold /= 100;
@@ -39,12 +28,11 @@ int main(int argc, char **argv)
         else {
             opts.threshold /= 1000;
         }
-        //printf("threshold = %0.9f\n",opts.threshold);
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
-        std::cout << "total time: " << diff.count() << std::endl;
+        //std::cout << "total time: " << diff.count() << std::endl;
         print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     }
     
