@@ -52,7 +52,6 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
 void findMinIndices(const thrust::device_vector<double>& distances, thrust::device_vector<int>& min_indices, int n, int k);
 inline void checkCudaError(const char *file, int line);
 bool checkDistanceThreshold(thrust::device_vector<double>& thrust_centroids, thrust::device_vector<double>& thrust_old_centroids, double threshold);
-// Euclidean distance functor
 struct EuclideanDistanceFunctor : public thrust::binary_function<double, double, double>
 {
     __host__ __device__
@@ -62,10 +61,8 @@ struct EuclideanDistanceFunctor : public thrust::binary_function<double, double,
         return diff * diff;
     }
 };
-
 // Check if distance exceeds threshold functor
-struct CheckThresholdFunctor
-{
+struct CheckThresholdFunctor {
     double threshold;
 
     CheckThresholdFunctor(double threshold) : threshold(threshold) {}
@@ -77,8 +74,7 @@ struct CheckThresholdFunctor
     }
 };
 // calculate distances between two points
-struct CalculateDistancesFunctor
-{
+struct CalculateDistancesFunctor {
     const double* points_n;
     const double* points_k;
     int k, dims;
@@ -107,8 +103,7 @@ struct CalculateDistancesFunctor
 };
 
 // Functor to calculate the relative index of the minimum value in a segment
-struct MinIndexFunctor : public thrust::unary_function<thrust::tuple<double, int>, int>
-{
+struct MinIndexFunctor : public thrust::unary_function<thrust::tuple<double, int>, int> {
     __host__ __device__
     int operator()(const thrust::tuple<double, int>& tuple) const
     {
@@ -117,8 +112,7 @@ struct MinIndexFunctor : public thrust::unary_function<thrust::tuple<double, int
 };
 
 // Functor to update centroids based on points and labels
-struct UpdateCentroidsFunctor
-{
+struct UpdateCentroidsFunctor {
     int k;
     int dims;
     double* centroids_ptr; // raw pointer to centroids data
@@ -137,24 +131,10 @@ struct UpdateCentroidsFunctor
 };
 
 // Functor for element-wise division
-struct DivideFunctor : public thrust::binary_function<double, int, double>
-{
+struct DivideFunctor : public thrust::binary_function<double, int, double> {
     __host__ __device__
     double operator()(const double& x, const int& y) const
     {
         return x / static_cast<double>(y);
-    }
-};
-
-struct CountLabelsFunctor
-{
-    int k;
-
-    CountLabelsFunctor(int k) : k(k) {}
-
-    __host__ __device__
-    int operator()(int label)
-    {
-        return 1;
     }
 };

@@ -105,16 +105,13 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
             // Sort labels for reduce_by_key
             thrust::sort(thrust_labels.begin(), thrust_labels.end());
             // Functor for counting labels
-            CountLabelsFunctor countLabels(k);
-            // Count labels using reduce_by_key
-            int total_count = thrust::transform_reduce(thrust_labels.begin(), thrust_labels.end(), countLabels, 0, thrust::plus<int>());
 
             thrust::reduce_by_key(thrust_labels.begin(), thrust_labels.end(), thrust::make_constant_iterator(1),
                           thrust::make_discard_iterator(), thrust_counts.begin());
 
 
             thrust::transform(thrust_centroids.begin(), thrust_centroids.end(), thrust_counts.begin(), thrust_centroids.begin(), DivideFunctor());
-            done = !checkDistanceThreshold(thrust_centroids, thrust_old_centroids, tolerance);
+            done = (iterations == max_num_iter) || !checkDistanceThreshold(thrust_centroids, thrust_old_centroids, tolerance);
         }
         else{
             if(version == cuda_shmem) {
@@ -184,7 +181,7 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     std::chrono::duration<double,std::ratio<1,1000>> diff_transfer = finish_datatransfer - resume_datatransfer + pause_datatransfer - start_datatransfer;
     printf("%lf time spent in data transfer.\n",diff_transfer.count());
     printf("iterations + data transfer time: %lf\n",(diff_transfer+diff).count());
-    
+
     // Free device memory
     cudaFree(d_points);
     cudaFree(d_centroids);
@@ -236,26 +233,9 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
         l_idx += blockDim.x;
     }
     __syncthreads();
-    /*
-    if(idx == 2) {
-        printf("smem contents: [");
-        for(int i=0;i<size_of_smem;++i) {
-            printf(" %f,",shared_points[i]);
-        }
-        printf(" ]\n");
-    }
-    
-    __syncthreads();
-    */
-    //printf("calcDistances_kernel called for idx %d\n",idx);
+
     if(idx < num_points * k) {
-        // shmem_point_idx = point_idx - lowest_point_idx
         int shmem_point_idx = point_idx - lowest_point_idx;
-        /*
-        if(idx == 2) {
-            printf("point_idx: %d, lowest_pt_idx: %d, shmem_point_idx = %d\n",point_idx,lowest_point_idx,shmem_point_idx);
-        }
-        */
         int idx_to_centroid = centroid_idx * dims;
         if(idx_to_centroid < (1024-dims)) {
             distances[idx] = euclideanDistance(&shared_points[shmem_point_idx * dims], &shared_centroids[idx_to_centroid], dims);
@@ -263,22 +243,12 @@ __global__ void calcDistances_shmem_kernel(double* distances, double* points, do
         else {        
             distances[idx] = euclideanDistance(&shared_points[shmem_point_idx * dims], &centroids[idx_to_centroid], dims);
         }
-        //printf("distance set for point %d centroid %d as %f\n",point_idx,centroid_idx,distances[idx]);
     }
     __syncthreads();
-    /*
-    if (threadIdx.x == 0) {
-        // Only the first thread in the block frees the memory
-        printf("about to delete shared_points!\n");
-        delete[] shared_points;
-        printf("deleted shared_points\n");
-    }
-    __syncthreads();
-    */
+
 }
 __global__ void findNearestCentroids_kernel(int* labels, double* points, double* centroids, double* old_centroids, double* distances, int num_points, int k, int dims, bool first_time) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    //printf("called findNearestCentroids_kernel for idx %d\n",idx);
     if (idx < num_points) {
         int label = labels[idx];
         //printf("label = %d\n",label);

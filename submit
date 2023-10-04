@@ -62,36 +62,36 @@
 # Specification for sequential implementation of kmeans
 #
 [Sequential]
-How_To_Compile:
-Executable:
-Extra_Args:
+How_To_Compile: make compile
+Executable: ./bin/kmeans
+Extra_Args: -v seq
 
 #
 # Specification for GPU implementation of kmeans
 # using Thrust
 #
 [Thrust]
-How_To_Compile:
-Executable:
-Extra_Args:
+How_To_Compile: make cudaseq
+Executable: ./cuda/kmeans
+Extra_Args: -v thrust
 
 #
 # Specification for GPU implementation of kmeans
 # using CUDA
 #
 [CUDA basic]
-How_To_Compile:
-Executable:
-Extra_Args:
+How_To_Compile: make cudaseq
+Executable: ./cuda/kmeans
+Extra_Args: -v cuda
 
 #
 # Specification for GPU implementation of kmeans
 # using Shared Memory
 #
 [CUDA shared]
-How_To_Compile:
-Executable:
-Extra_Args:
+How_To_Compile: make cudaseq
+Executable: ./cuda/kmeans
+Extra_Args: -v shmem
 
 #
 # Specification for GPU implementation of kmeans
