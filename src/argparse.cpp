@@ -42,7 +42,7 @@ void get_opts(int argc,
     std::string shmem{"shmem"};
     std::string thrust{"thrust"};
     std::string arg_version;
-    while ((c = getopt_long(argc, argv, "k:d:i:m./:t:cs:v:", l_opts, &ind)) != -1)
+    while ((c = getopt_long(argc, argv, "k:d:i:m:t:cs:v:", l_opts, &ind)) != -1)
     {
         switch (c)
         {

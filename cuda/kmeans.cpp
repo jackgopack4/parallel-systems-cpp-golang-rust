@@ -43,8 +43,8 @@ int main(int argc, char **argv)
         auto start = std::chrono::high_resolution_clock::now();
         compute_kmeans_cuda(&opts,points,&centroids,&indices,num_points);
         auto end = std::chrono::high_resolution_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        //std::cout << "total time: " << diff.count() << std::endl;
+        std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
+        std::cout << "total time: " << diff.count() << std::endl;
         print_output(cluster_output,points,centroids,indices,num_points, k, dims);
     }
     

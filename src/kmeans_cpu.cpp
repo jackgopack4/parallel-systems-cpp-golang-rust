@@ -12,16 +12,6 @@ void compute_kmeans(options_t* opts, double* points, double** centroids, int** l
     bool done = false;
     double* old_centroids = (double*) calloc(k*dims,sizeof(double));
     double tolerance = opts->threshold;
-    /*
-    printf("iteration %d:\n",iterations);
-        for (int i=0;i<k;++i) {
-            printf("%d",i);
-            for (int j=0;j<dims; ++j) {
-                printf(" %f",(*centroids)[i*dims + j]);
-            }
-            printf("\n");
-        }
-    */
     auto start = std::chrono::high_resolution_clock::now();
     while(!done) {
 

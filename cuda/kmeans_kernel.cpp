@@ -59,8 +59,8 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMalloc((void**)&d_distances, num_points * k * sizeof(double));
     cudaMalloc((void**)&d_labels, num_points * sizeof(int));
     cudaMalloc((void**)&d_counts, k * sizeof(int));
-
-    
+    cudaDeviceSynchronize();
+    auto start_datatransfer = std::chrono::high_resolution_clock::now();
     /* Copy data from host to device */
     cudaMemcpy(d_points, points, num_points * dims * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
@@ -68,9 +68,8 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMemcpy(d_distances,h_distances,num_points*k*sizeof(double),cudaMemcpyHostToDevice);
     cudaMemcpy(d_labels, (*labels), num_points * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_counts,h_counts,k*sizeof(int),cudaMemcpyHostToDevice);
-
- 
     cudaDeviceSynchronize();
+    auto pause_datatransfer = std::chrono::high_resolution_clock::now();
     CUDA_CHECK_ERROR();
     auto start = std::chrono::high_resolution_clock::now();
     int num_blocks = (num_points*k + tmp_block_size - 1) / tmp_block_size; // Round up to cover all threads
@@ -85,7 +84,7 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
         if(version == cuda_thrust) {
             thrust::transform(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(num_points * k), thrust_distances.begin(), CalculateDistancesFunctor(thrust_points, thrust_centroids, k, dims));
             CUDA_CHECK_ERROR();
-            thrust::copy(thrust_distances.begin(), thrust_distances.end(), std::ostream_iterator<float>(std::cout, " "));
+            //thrust::copy(thrust_distances.begin(), thrust_distances.end(), std::ostream_iterator<float>(std::cout, " "));
 
             findMinIndices(thrust_distances, thrust_labels, num_points, k);
             CUDA_CHECK_ERROR();
@@ -101,7 +100,7 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
                 UpdateCentroidsFunctor(k, dims, centroids_ptr)
             );
             CUDA_CHECK_ERROR();
-            thrust::copy(thrust_centroids.begin(), thrust_centroids.end(), std::ostream_iterator<float>(std::cout, " "));
+            //thrust::copy(thrust_centroids.begin(), thrust_centroids.end(), std::ostream_iterator<float>(std::cout, " "));
 
             // Sort labels for reduce_by_key
             thrust::sort(thrust_labels.begin(), thrust_labels.end());
@@ -175,10 +174,17 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     /*printf("total iterations: %d\n",iterations);*/
 
     // Copy data back to host
+    auto resume_datatransfer = std::chrono::high_resolution_clock::now();
+
     cudaMemcpy(*centroids, d_centroids, k * dims * sizeof(double), cudaMemcpyDeviceToHost);
     cudaMemcpy(*labels, d_labels, num_points * sizeof(int), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
+    auto finish_datatransfer = std::chrono::high_resolution_clock::now();
 
+    std::chrono::duration<double,std::ratio<1,1000>> diff_transfer = finish_datatransfer - resume_datatransfer + pause_datatransfer - start_datatransfer;
+    printf("%lf time spent in data transfer.\n",diff_transfer.count());
+    printf("iterations + data transfer time: %lf\n",(diff_transfer+diff).count());
+    
     // Free device memory
     cudaFree(d_points);
     cudaFree(d_centroids);
