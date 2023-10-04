@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 
     assign_centers(&centroids,points,k,cmd_seed, num_points, dims);    
     //printf("assigned centers\n");
-    if (v == cuda_basic || v == cuda_shmem) {
+    if (v == cuda_basic || v == cuda_shmem || v == cuda_thrust) {
         if (v == cuda_basic) {
             opts.threshold /= 100;
         }

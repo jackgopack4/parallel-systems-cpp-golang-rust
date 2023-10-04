@@ -1,5 +1,6 @@
 #include "kmeans_kernel.h"
 #define BLOCK_SIZE 64
+
 void helloFromGPU_wrapper(int blocks, int threads) {
     helloFromGPU <<<blocks,threads>>>();
     cudaDeviceSynchronize();
@@ -36,6 +37,21 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
         //printf("distances[%d]: %f\n",i,h_distances[i]);
     }
     int *d_labels, *d_counts;
+    // allocate unified memory
+    bool *centroid_changed;
+    cudaMallocManaged(&centroid_changed, k*sizeof(bool));
+    for(int i=0;i<k;++i) {
+        centroid_changed[i] = true;
+    }
+    // Initialize Thrust device vectors
+    thrust::device_vector<double> thrust_points(points, points + num_points * dims);
+    thrust::device_vector<double> thrust_centroids(*centroids, *centroids + k * dims);
+    thrust::device_vector<double> thrust_distances(num_points * k);
+    thrust::device_vector<double> thrust_old_centroids(*centroids, *centroids + k * dims);
+    thrust::device_vector<int> thrust_labels(*labels, *labels + num_points);
+    thrust::device_vector<int> thrust_counts(h_counts, h_counts + k);
+    thrust::device_vector<bool> thrust_centroid_changed(centroid_changed, centroid_changed + k);
+
 
     cudaMalloc((void**)&d_points, num_points * dims * sizeof(double));
     cudaMalloc((void**)&d_centroids, k * dims * sizeof(double));
@@ -44,12 +60,7 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMalloc((void**)&d_labels, num_points * sizeof(int));
     cudaMalloc((void**)&d_counts, k * sizeof(int));
 
-    // allocate unified memory
-    bool *centroid_changed;
-    cudaMallocManaged(&centroid_changed, k*sizeof(bool));
-    for(int i=0;i<k;++i) {
-        centroid_changed[i] = true;
-    }
+    
     /* Copy data from host to device */
     cudaMemcpy(d_points, points, num_points * dims * sizeof(double), cudaMemcpyHostToDevice);
     cudaMemcpy(d_centroids, *centroids, k * dims * sizeof(double), cudaMemcpyHostToDevice);
@@ -57,8 +68,10 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
     cudaMemcpy(d_distances,h_distances,num_points*k*sizeof(double),cudaMemcpyHostToDevice);
     cudaMemcpy(d_labels, (*labels), num_points * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_counts,h_counts,k*sizeof(int),cudaMemcpyHostToDevice);
-    
+
+ 
     cudaDeviceSynchronize();
+    CUDA_CHECK_ERROR();
     auto start = std::chrono::high_resolution_clock::now();
     int num_blocks = (num_points*k + tmp_block_size - 1) / tmp_block_size; // Round up to cover all threads
     int num_threads_per_block = tmp_block_size;
@@ -69,53 +82,92 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
         ++iterations;
         bool first_time = (iterations == 1);
         /* Launch CUDA kernels */
-        if(version == cuda_shmem) {
-            int num_points_per_block = (num_threads_per_block+k-1)/k;
-            calcDistances_shmem_kernel<<<num_blocks,num_threads_per_block,sizeof(double)*dims*num_points_per_block>>>(d_distances,d_points, d_centroids, num_points, k, dims);
-        }
-        else {
-            calcDistances_kernel<<<num_blocks, num_threads_per_block>>>(d_distances,d_points, d_centroids, num_points, k, dims);
-        }
-        cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
-        num_blocks = (num_points + tmp_block_size - 1) / tmp_block_size;
-        findNearestCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims, first_time);
-        cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
+        if(version == cuda_thrust) {
+            thrust::transform(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(num_points * k), thrust_distances.begin(), CalculateDistancesFunctor(thrust_points, thrust_centroids, k, dims));
+            CUDA_CHECK_ERROR();
+            thrust::copy(thrust_distances.begin(), thrust_distances.end(), std::ostream_iterator<float>(std::cout, " "));
 
-        cudaMemcpy(d_old_centroids,d_centroids,k*dims*sizeof(double),cudaMemcpyDeviceToDevice);
-        cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
-        cudaMemset(d_centroids,0,k*dims*sizeof(double));
-        cudaMemset(d_counts,0,k*sizeof(int));
-        cudaDeviceSynchronize();
-        CUDA_CHECK_ERROR();
-        if(version == cuda_shmem) {
-            averageLabeledCentroids_shmem_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+            findMinIndices(thrust_distances, thrust_labels, num_points, k);
+            CUDA_CHECK_ERROR();
+            thrust::copy(thrust_centroids.begin(), thrust_centroids.end(), thrust_old_centroids.begin());
+            thrust::fill(thrust_centroids.begin(), thrust_centroids.end(), 0.0);
+            thrust::fill(thrust_counts.begin(),thrust_counts.end(),0);
+            double* centroids_ptr = thrust::raw_pointer_cast(thrust_centroids.data());
+
+            // Update centroids based on points and labels
+            thrust::for_each(
+                thrust::make_zip_iterator(thrust::make_tuple(thrust_points.begin(), thrust_labels.begin())),
+                thrust::make_zip_iterator(thrust::make_tuple(thrust_points.end(), thrust_labels.end())),
+                UpdateCentroidsFunctor(k, dims, centroids_ptr)
+            );
+            CUDA_CHECK_ERROR();
+            thrust::copy(thrust_centroids.begin(), thrust_centroids.end(), std::ostream_iterator<float>(std::cout, " "));
+
+            // Sort labels for reduce_by_key
+            thrust::sort(thrust_labels.begin(), thrust_labels.end());
+            // Functor for counting labels
+            CountLabelsFunctor countLabels(k);
+            // Count labels using reduce_by_key
+            int total_count = thrust::transform_reduce(thrust_labels.begin(), thrust_labels.end(), countLabels, 0, thrust::plus<int>());
+
+            thrust::reduce_by_key(thrust_labels.begin(), thrust_labels.end(), thrust::make_constant_iterator(1),
+                          thrust::make_discard_iterator(), thrust_counts.begin());
+
+
+            thrust::transform(thrust_centroids.begin(), thrust_centroids.end(), thrust_counts.begin(), thrust_centroids.begin(), DivideFunctor());
+            done = !checkDistanceThreshold(thrust_centroids, thrust_old_centroids, tolerance);
         }
-        else {
-            averageLabeledCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+        else{
+            if(version == cuda_shmem) {
+                    int num_points_per_block = (num_threads_per_block+k-1)/k;
+                    calcDistances_shmem_kernel<<<num_blocks,num_threads_per_block,sizeof(double)*dims*num_points_per_block>>>(d_distances,d_points, d_centroids, num_points, k, dims);
+                    
+                }
+                else {
+                    calcDistances_kernel<<<num_blocks, num_threads_per_block>>>(d_distances,d_points, d_centroids, num_points, k, dims);
+                }
+                cudaDeviceSynchronize();
+                CUDA_CHECK_ERROR();
+                num_blocks = (num_points + tmp_block_size - 1) / tmp_block_size;
+                findNearestCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_labels, d_points, d_centroids, d_old_centroids, d_distances, num_points, k, dims, first_time);
+                cudaDeviceSynchronize();  // Wait for the kernel to finish
+                CUDA_CHECK_ERROR();
+
+                cudaMemcpy(d_old_centroids,d_centroids,k*dims*sizeof(double),cudaMemcpyDeviceToDevice);
+                cudaDeviceSynchronize();
+                CUDA_CHECK_ERROR();
+                cudaMemset(d_centroids,0,k*dims*sizeof(double));
+                cudaMemset(d_counts,0,k*sizeof(int));
+                cudaDeviceSynchronize();
+                CUDA_CHECK_ERROR();
+                if(version == cuda_shmem) {
+                    averageLabeledCentroids_shmem_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+                }
+                else {
+                    averageLabeledCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_points, d_labels, d_centroids, d_old_centroids, d_counts, k, dims, num_points);
+                }
+                cudaDeviceSynchronize();  // Wait for the kernel to finish
+                CUDA_CHECK_ERROR();
+                //printf("about to call updateCentroids_kernel\n");
+                num_blocks = (k + tmp_block_size - 1) / tmp_block_size;
+                updateCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_centroids, d_old_centroids, d_counts, k, dims, centroid_changed, tolerance);
+                cudaDeviceSynchronize();  // Wait for the kernel to finish
+                CUDA_CHECK_ERROR();
+                //printf("finished updateCentroids_kernel\n");
+                done = true;
+                for(int i=0; i<k; ++i) {
+                    if (centroid_changed[i]) {
+                        /*printf("centroid %d changed\n",i);*/
+                        done = false;
+                    }
+                }
+                if(iterations == max_num_iter) {
+                    done = true;
+                }
+                /*printf("runtime for iteration %d: %ld\n",iterations,diff.count());*/
+
         }
-        cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
-        //printf("about to call updateCentroids_kernel\n");
-        num_blocks = (k + tmp_block_size - 1) / tmp_block_size;
-        updateCentroids_kernel<<<num_blocks, num_threads_per_block>>>(d_centroids, d_old_centroids, d_counts, k, dims, centroid_changed, tolerance);
-        cudaDeviceSynchronize();  // Wait for the kernel to finish
-        CUDA_CHECK_ERROR();
-        //printf("finished updateCentroids_kernel\n");
-        done = true;
-        for(int i=0; i<k; ++i) {
-            if (centroid_changed[i]) {
-                /*printf("centroid %d changed\n",i);*/
-                done = false;
-            }
-        }
-        if(iterations == max_num_iter) {
-            done = true;
-        }
-        /*printf("runtime for iteration %d: %ld\n",iterations,diff.count());*/
-    }
+     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double,std::ratio<1,1000>> diff = end - start;
     printf("%d,%lf\n", iterations, diff.count()/iterations);
@@ -247,10 +299,21 @@ __global__ void findNearestCentroids_kernel(int* labels, double* points, double*
         }
         //printf("closer distance for point [%f,%f] at centroid %d: [%f, %f]\n",points[idx*dims],points[idx*dims+1],label,centroids[label*dims],centroids[label*dims+1]);
         labels[idx] = label;
-        //printf("set label for point %d as centroid %d\n",idx,label);
-        //memcpy((void**)&old_centroids[idx * dims], (void**)&centroids[idx * dims], dims* sizeof(double));
-        //memset((void**)&centroids[idx * dims], 0, dims * sizeof(double));	
     }
+}
+
+void findMinIndices(const thrust::device_vector<double>& distances, thrust::device_vector<int>& min_indices, int n, int k) {
+    // Create counting iterator for each n point
+    thrust::counting_iterator<int> count_it(0);
+
+    // Create zip iterator to combine indices and distances
+    thrust::zip_iterator<thrust::tuple<thrust::counting_iterator<int>, thrust::device_vector<double>::const_iterator>> zip_it(thrust::make_tuple(count_it, distances.begin()));
+
+    // Transform iterator to get the relative index of the minimum value in each segment
+    thrust::transform(zip_it, zip_it + n * k, min_indices.begin(), MinIndexFunctor());
+
+    // Find the minimum value for each n point
+    thrust::reduce_by_key(count_it, count_it + n * k, min_indices.begin(), thrust::make_discard_iterator(), min_indices.begin(), thrust::equal_to<int>(), thrust::minimum<int>());
 }
 
 __device__ double euclideanDistance(double* point1, double* point2, int k) {
@@ -346,4 +409,21 @@ inline void checkCudaError(const char *file, int line) {
         std::cerr << "CUDA error: " << cudaGetErrorString(err) << " at " << file << ":" << line << std::endl;
         exit(EXIT_FAILURE);
     }
+}
+bool checkDistanceThreshold(thrust::device_vector<double>& thrust_centroids, thrust::device_vector<double>& thrust_old_centroids, double threshold)
+{
+    // Calculate squared Euclidean distances
+    thrust::device_vector<double> squaredDistances(thrust_centroids.size());
+    thrust::transform(thrust_centroids.begin(), thrust_centroids.end(),
+                      thrust_old_centroids.begin(),
+                      squaredDistances.begin(),
+                      EuclideanDistanceFunctor());
+
+    // Check if any distance exceeds the threshold
+    bool aboveThreshold = thrust::transform_reduce(squaredDistances.begin(), squaredDistances.end(),
+                                                   CheckThresholdFunctor(threshold),
+                                                   false, // initial value
+                                                   thrust::logical_or<bool>());
+
+    return aboveThreshold;
 }
