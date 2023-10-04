@@ -104,11 +104,7 @@ void compute_kmeans_cuda(options_t* opts, double* points, double** centroids, in
 
             // Sort labels for reduce_by_key
             thrust::sort(thrust_labels.begin(), thrust_labels.end());
-            // Functor for counting labels
-            CountLabelsFunctor countLabels(k);
-            // Count labels using reduce_by_key
-            int total_count = thrust::transform_reduce(thrust_labels.begin(), thrust_labels.end(), countLabels, 0, thrust::plus<int>());
-
+            
             thrust::reduce_by_key(thrust_labels.begin(), thrust_labels.end(), thrust::make_constant_iterator(1),
                           thrust::make_discard_iterator(), thrust_counts.begin());
 
