@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-import os
+# import os
 from subprocess import check_output
 import re
-from time import sleep
-import matplotlib
+
+# from time import sleep
+# import matplotlib
 from statistics import mean
 
-matplotlib.use("Agg")
-from matplotlib import pyplot as plt
+# matplotlib.use("Agg")
+# from matplotlib import pyplot as plt
 
 #
 #  Feel free (a.k.a. you have to) to modify this to instrument your code
@@ -16,9 +17,9 @@ from matplotlib import pyplot as plt
 NUM_SAMPLES = 10
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["simple.txt", "coarse.txt", "fine.txt"]
-lengths = [12, 12, 12]
-iteration_max = 12
+inps = ["coarse.txt", "fine.txt"]
+lengths = [100, 100000]
+iteration_max = 50
 csvs = []
 for idx, inp in enumerate(inps):
     times = {}
@@ -27,7 +28,8 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = range(1, lengths[idx] + 1, step)
+    hash_workers = [1]
+    hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:
         cmd = f"./bin/BST -filename=input/{inp} -hash-workers={hw}"

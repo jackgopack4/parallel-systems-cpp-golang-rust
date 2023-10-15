@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -194,13 +195,18 @@ func calcHashes(tree_list *[]TreeNode, hash_list *[]int, num_workers int) {
 			inOrderTraversal(&(*tree_list)[idx], &(*hash_list)[idx])
 		}
 	} else {
+		var wg sync.WaitGroup
 		for i:=0;i<num_workers;i++ {
-			go calcHashesWorker(tree_list,hash_list,num_workers,i)
+			wg.Add(1)
+			go calcHashesWorker(tree_list,hash_list,num_workers,i, &wg) 
+			
 		}
+		wg.Wait()
 	}
 }
 
-func calcHashesWorker(tree_list *[]TreeNode, hash_list *[]int, num_workers int, idx int) {
+func calcHashesWorker(tree_list *[]TreeNode, hash_list *[]int, num_workers int, idx int, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for idx < len(*tree_list) {
 		inOrderTraversal(&(*tree_list)[idx], &(*hash_list)[idx])
 		idx += num_workers
