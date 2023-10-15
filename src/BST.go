@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +11,19 @@ import (
 	"sync"
 	"time"
 )
+type stack []*TreeNode
+
+func (s stack) Push(v *TreeNode) stack {
+    return append(s, v)
+}
+
+func (s stack) Pop() (stack, *TreeNode,error) {
+    l := len(s)
+		if l == 0 {
+			return s, nil, errors.New("empty stack")
+		}
+    return  s[:l-1], s[l-1],nil
+}
 
 type TreeNode struct {
 	val       int
@@ -97,9 +111,9 @@ func main() {
 	for idx, bst := range trees {
 		hashes[idx] = 1
 		if equal_workers {
-			go inOrderTraversal(&bst,&hashes[idx])
+			go inOrderTraversalIterative(&bst,&hashes[idx])
 		} else {
-			inOrderTraversal(&bst, &hashes[idx])
+			inOrderTraversalIterative(&bst, &hashes[idx])
 		}
 		//fmt.Println()
 		//fmt.Println("tree idx: ",idx,"hash_val: ", hash_val)
@@ -185,6 +199,28 @@ func inOrderTraversal(root *TreeNode, hash_val *int) []int {
 	return res
 }
 
+func inOrderTraversalIterative(root *TreeNode, hash_val *int) []int {
+	result := []int{}
+	q := make(stack,0)
+	current := root
+	for current != nil || len(q) > 0 {
+		for current != nil {
+			q = q.Push(current)
+			current = current.left
+		}
+
+		// Visit the top of the stack
+		q, current, _ = q.Pop()
+		result = append(result, current.val)
+		new_value := current.val + 2;
+		*hash_val = (*hash_val * new_value + new_value) % 1000
+		// Move to the right subtree
+		current = current.right
+	}
+
+	return result
+}
+
 func calcHashes(tree_list *[]TreeNode, hash_list *[]int, num_workers int) {
 	if num_workers > len(*tree_list) {
 		num_workers = len(*tree_list)
@@ -192,7 +228,7 @@ func calcHashes(tree_list *[]TreeNode, hash_list *[]int, num_workers int) {
 	if num_workers <= 1 {
 		for idx := range *tree_list {
 			(*hash_list)[idx] = 1
-			inOrderTraversal(&(*tree_list)[idx], &(*hash_list)[idx])
+			inOrderTraversalIterative(&(*tree_list)[idx], &(*hash_list)[idx])
 		}
 	} else {
 		var wg sync.WaitGroup
@@ -208,15 +244,15 @@ func calcHashes(tree_list *[]TreeNode, hash_list *[]int, num_workers int) {
 func calcHashesWorker(tree_list *[]TreeNode, hash_list *[]int, num_workers int, idx int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for idx < len(*tree_list) {
-		inOrderTraversal(&(*tree_list)[idx], &(*hash_list)[idx])
+		inOrderTraversalIterative(&(*tree_list)[idx], &(*hash_list)[idx])
 		idx += num_workers
 	}
 }
 
 func compareTrees(root1 *TreeNode, root2 *TreeNode) bool {
 	var tmp int
-	list1 := inOrderTraversal(root1,&tmp)
-	list2 := inOrderTraversal(root2,&tmp)
+	list1 := inOrderTraversalIterative(root1,&tmp)
+	list2 := inOrderTraversalIterative(root2,&tmp)
 	if len(list1) != len(list2) {
 		return false
 	}

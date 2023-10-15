@@ -17,8 +17,8 @@ from statistics import mean
 NUM_SAMPLES = 10
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse.txt", "fine.txt"]
-lengths = [100, 100000]
+inps = ["coarse.txt", "fine.txt", "coarse3.txt"]
+lengths = [100, 100000, 10000]
 iteration_max = 50
 csvs = []
 for idx, inp in enumerate(inps):
