@@ -4,6 +4,7 @@ from subprocess import check_output
 import re
 from time import sleep
 import matplotlib
+from statistics import mean
 
 matplotlib.use("Agg")
 from matplotlib import pyplot as plt
@@ -41,11 +42,8 @@ for idx, inp in enumerate(inps):
                     times[hw] = [time]
                 else:
                     times[hw].append(time)
-    avg_times = []
-    for hw in hash_workers:
-        avg_times.append(sum(times[hw]) / len(times[hw]))
-    for i, avg_time in enumerate(avg_times):
-        print(f"average runtime for {i*step+1} hash-workers: {avg_time:.5e}")
+        avg_time = mean(times[hw])
+        print(f"average runtime for {hw} hash-workers: {avg_time:.4e}")
 
 """
 for thr in THREADS:
