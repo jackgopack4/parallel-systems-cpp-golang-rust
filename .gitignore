@@ -8,3 +8,4 @@ Lab2/*.o
 bin/
 .DS_Store
 input/coarse3.txt
+.DS_Store
