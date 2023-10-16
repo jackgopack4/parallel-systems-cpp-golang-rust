@@ -11,6 +11,12 @@ import (
 	"sync"
 	"time"
 )
+
+type hash_val_idx struct {
+	val int
+	idx int
+}
+
 type stack []*TreeNode
 
 func (s stack) Push(v *TreeNode) stack {
@@ -46,13 +52,14 @@ func insertNode(root *TreeNode, value int) *TreeNode {
 func main() {
 	var filename string
 	var hash_workers, data_workers, comp_workers int
-	var print_groups,equal_workers bool
+	var print_groups,equal_workers,lock_hashcomp bool
 	flag.StringVar(&filename, "filename", "", "string-valued path to an input file")
 	flag.IntVar(&hash_workers,"hash-workers", 0, "integer-valued number of threads")
 	flag.IntVar(&data_workers,"data-workers", 0, "integer-valued number of threads")
 	flag.IntVar(&comp_workers,"comp-workers", 0, "integer-valued number of threads")
 	flag.BoolVar(&print_groups,"print-groups",true,"print hash groups and compare groups")
 	flag.BoolVar(&equal_workers,"equal-workers",false,"spawn num of goroutines equal to num BSTs")
+	flag.BoolVar(&lock_hashcomp,"lock-hashcomp",false,"use lock to protect hashesMap data struct")
 	flag.Parse()
 	if filename == "" {
 		fmt.Println("Usage: go run filename.go -filename=sample-file.txt")
@@ -67,13 +74,11 @@ func main() {
 
 	var inputNumbers []int
 	var trees []TreeNode
-	//var hashes []int
-	//idx := 0
+	hashes_lock:= sync.Mutex{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		inputNumbers = nil
 		nums_list := strings.Fields(scanner.Text())
-		//fmt.Println(nums_list)
 		for _, v := range nums_list {
 			num, err := strconv.Atoi(v)
 			if err != nil {
@@ -82,7 +87,6 @@ func main() {
 			}
 			inputNumbers = append(inputNumbers, num)
 		}
-		//fmt.Println(inputNumbers)
 		bst := TreeNode{}
 
 		// Insert numbers into the BST
@@ -90,52 +94,25 @@ func main() {
 			bst = *insertNode(&bst,num)
 		}
 		trees = append(trees, bst)
-		//fmt.Println("Binary Search Tree in-order traversal for tree idx: ",idx)
-		
-		//idx += 1
 	}
 
 	// Calculate hashes
-	hashes := make([]int, len(trees))
-	var num_hashworkers int
-	if hash_workers == 0 {
-		num_hashworkers = 1
-	} else if equal_workers {
-		num_hashworkers = len(trees)
-	} else {
-		num_hashworkers = hash_workers
-	}
+	hashes_map := make(map[int][]int)
+	c := make(chan hash_val_idx, len(trees))
+	num_hashworkers := calcHashWorkers(hash_workers,equal_workers,len(trees))
+
 	hash_start := time.Now()
-	calcHashes(&trees,&hashes,num_hashworkers)
-	/*
-	for idx, bst := range trees {
-		hashes[idx] = 1
-		if equal_workers {
-			go inOrderTraversalIterative(&bst,&hashes[idx])
-		} else {
-			inOrderTraversalIterative(&bst, &hashes[idx])
-		}
-		//fmt.Println()
-		//fmt.Println("tree idx: ",idx,"hash_val: ", hash_val)
-	}
-	*/
+	calcHashes(&trees,&hashes_map,num_hashworkers, c,lock_hashcomp,&hashes_lock)
 	hash_elapsed := time.Since(hash_start)
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading file:", err)
-		return
-	}
+
 	fmt.Println("hashTime:",hash_elapsed.Seconds())
 	if comp_workers > 0 || data_workers > 0 {
-		//hash_group_start := time.Now()
-		result := findIndices(hashes)
-		//fmt.Println("hash groups:")
-		//hash_idx := 0
 		hash_group_elapsed := time.Since(hash_start)
 		fmt.Println("hashGroupTime:",hash_group_elapsed.Seconds())
 		if print_groups {
-			for _, indices := range result {
+			for k, indices := range hashes_map {
 				if len(indices) > 1 {
-					fmt.Print(hashes[indices[0]],": ")
+					fmt.Print(k,": ")
 					for _,v := range indices {
 						fmt.Print(v," ")
 					}
@@ -146,7 +123,7 @@ func main() {
 
 		compare_start := time.Now()
 		compareMap := make(map[int][]int)
-		for _, indices := range result {
+		for _, indices := range hashes_map {
 			if len(indices) > 1 {
 				for i,v := range indices {
 					_, found := compareMap[v]
@@ -186,20 +163,27 @@ func main() {
 	}
 }
 
-func inOrderTraversal(root *TreeNode, hash_val *int) []int {
-	res := []int{}
-	if root != nil {
-		res = append(res,inOrderTraversal(root.left, hash_val)...)
-		new_value := root.val + 2;
-		*hash_val = (*hash_val * new_value + new_value) % 1000
-		//fmt.Print(root.val, " ")	
-		res = append(res,root.val)
-		res = append(res,inOrderTraversal(root.right, hash_val)...)
+func calcHashTraversal(root *TreeNode) int {
+	hash_val := 1
+	q := make(stack,0)
+	current := root
+	for current != nil || len(q) > 0 {
+		for current != nil {
+			q = q.Push(current)
+			current = current.left
+		}
+
+		// Visit the top of the stack
+		q, current, _ = q.Pop()
+		new_val := current.val + 2;
+		hash_val = (hash_val * new_val + new_val) % 1000
+		// Move to the right subtree
+		current = current.right
 	}
-	return res
+	return hash_val
 }
 
-func inOrderTraversalIterative(root *TreeNode, hash_val *int) []int {
+func inOrderTraversalIterative(root *TreeNode) []int {
 	result := []int{}
 	q := make(stack,0)
 	current := root
@@ -212,8 +196,6 @@ func inOrderTraversalIterative(root *TreeNode, hash_val *int) []int {
 		// Visit the top of the stack
 		q, current, _ = q.Pop()
 		result = append(result, current.val)
-		new_value := current.val + 2;
-		*hash_val = (*hash_val * new_value + new_value) % 1000
 		// Move to the right subtree
 		current = current.right
 	}
@@ -221,38 +203,70 @@ func inOrderTraversalIterative(root *TreeNode, hash_val *int) []int {
 	return result
 }
 
-func calcHashes(tree_list *[]TreeNode, hash_list *[]int, num_workers int) {
+func calcHashes(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, c chan hash_val_idx, lock_hashcomp bool, lock *sync.Mutex) {
 	if num_workers > len(*tree_list) {
 		num_workers = len(*tree_list)
 	}
 	if num_workers <= 1 {
 		for idx := range *tree_list {
-			(*hash_list)[idx] = 1
-			inOrderTraversalIterative(&(*tree_list)[idx], &(*hash_list)[idx])
+			hash_val := calcHashTraversal(&(*tree_list)[idx])
+			indices, found := (*hashes_map)[hash_val]
+			if !found {
+				indices = []int{idx}
+			} else {
+				indices = append(indices,idx)
+			}
+			(*hashes_map)[hash_val] = indices
 		}
 	} else {
 		var wg sync.WaitGroup
-		for i:=0;i<num_workers;i++ {
+		if lock_hashcomp {
+			for i:=0;i<num_workers;i++ {
+				wg.Add(1)
+				go calcHashesWorkerLock(tree_list,hashes_map,num_workers,i,&wg,lock)
+			}
+		} else {
 			wg.Add(1)
-			go calcHashesWorker(tree_list,hash_list,num_workers,i, &wg) 
-			
+			go hashesMapPutter(hashes_map,len(*tree_list),&wg,c)
+			for i:=0;i<num_workers;i++ {
+				wg.Add(1)
+				go calcHashesWorkerChan(tree_list,num_workers,i, &wg, c) 
+			}
 		}
+		
 		wg.Wait()
 	}
 }
 
-func calcHashesWorker(tree_list *[]TreeNode, hash_list *[]int, num_workers int, idx int, wg *sync.WaitGroup) {
+func calcHashesWorkerChan(tree_list *[]TreeNode, num_workers int, idx int, wg *sync.WaitGroup, c chan hash_val_idx) {
 	defer wg.Done()
 	for idx < len(*tree_list) {
-		inOrderTraversalIterative(&(*tree_list)[idx], &(*hash_list)[idx])
+		hash_val := calcHashTraversal(&(*tree_list)[idx])
+		c <- hash_val_idx{hash_val,idx}
+		idx += num_workers
+	}
+}
+
+func calcHashesWorkerLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
+	defer wg.Done()
+	for idx < len(*tree_list) {
+		hash_val := calcHashTraversal(&(*tree_list)[idx])
+		(*lock).Lock()
+		indices, found := (*hashes_map)[hash_val]
+		if !found {
+			indices = []int{idx}
+		} else {
+			indices = append(indices,idx)
+		}
+		(*hashes_map)[hash_val] = indices
+		(*lock).Unlock()
 		idx += num_workers
 	}
 }
 
 func compareTrees(root1 *TreeNode, root2 *TreeNode) bool {
-	var tmp int
-	list1 := inOrderTraversalIterative(root1,&tmp)
-	list2 := inOrderTraversalIterative(root2,&tmp)
+	list1 := inOrderTraversalIterative(root1)
+	list2 := inOrderTraversalIterative(root2)
 	if len(list1) != len(list2) {
 		return false
 	}
@@ -263,18 +277,32 @@ func compareTrees(root1 *TreeNode, root2 *TreeNode) bool {
 	return true
 }
 
-func findIndices(input []int) map[int][]int {
-	indexMap := make(map[int][]int)
-
-	for i, value := range input {
-		indices, found := indexMap[value]
+func hashesMapPutter(input *map[int][]int, count int, wg *sync.WaitGroup, c chan hash_val_idx) {
+	defer wg.Done()
+	for i:=0;i<count;i++ {
+		hash_struct := <- c
+		hash_val := hash_struct.val
+		b_id := hash_struct.idx
+		indices, found := (*input)[hash_val]
 		if !found {
-			indices = []int{i}
+			indices = []int{b_id}
 		} else {
-			indices = append(indices, i)
+			indices = append(indices,b_id)
 		}
-		indexMap[value] = indices
+		(*input)[hash_val] = indices
 	}
+}
 
-	return indexMap
+func calcHashWorkers(hash_workers int, equal_workers bool, length int) int {
+	var num_hashworkers int
+	if hash_workers == 0 {
+		num_hashworkers = 1
+	} else if equal_workers {
+		num_hashworkers = length
+	} else if hash_workers > 100 {
+		num_hashworkers = 100
+	} else {
+		num_hashworkers = hash_workers
+	}
+	return num_hashworkers
 }

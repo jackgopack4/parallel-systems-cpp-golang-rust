@@ -14,12 +14,12 @@ from statistics import mean
 #  Feel free (a.k.a. you have to) to modify this to instrument your code
 #
 
-NUM_SAMPLES = 10
+NUM_SAMPLES = 5
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse.txt", "fine.txt", "coarse3.txt"]
-lengths = [100, 100000, 10000]
-iteration_max = 50
+inps = ["coarse.txt", "fine.txt"]
+lengths = [25, 15]
+iteration_max = 15
 csvs = []
 for idx, inp in enumerate(inps):
     times = {}
