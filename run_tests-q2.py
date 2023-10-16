@@ -17,9 +17,9 @@ from statistics import mean
 NUM_SAMPLES = 5
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse.txt", "fine.txt"]
-lengths = [25, 15]
-iteration_max = 15
+inps = ["coarse.txt","fine.txt"]
+lengths = [100,10000]
+iteration_max = 25
 csvs = []
 for idx, inp in enumerate(inps):
     times = {}
@@ -28,7 +28,9 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = [1]
+    hash_workers = []
+    if step > 1:
+        hash_workers.append(1)
     hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:

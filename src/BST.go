@@ -299,8 +299,8 @@ func calcHashWorkers(hash_workers int, equal_workers bool, length int) int {
 		num_hashworkers = 1
 	} else if equal_workers {
 		num_hashworkers = length
-	} else if hash_workers > 100 {
-		num_hashworkers = 100
+	} else if hash_workers > 10000 {
+		num_hashworkers = 10000
 	} else {
 		num_hashworkers = hash_workers
 	}
