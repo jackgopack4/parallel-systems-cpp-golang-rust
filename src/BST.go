@@ -123,19 +123,22 @@ func main() {
 
 		compareMap := make(map[int][]int)
 		compareMatrix := make([][]bool, len(trees))
-		for i := range compareMatrix {
-			compareMatrix[i] = make([]bool, len(trees))
-			j := i
-			for j < len(compareMatrix[i]) {
-				compareMatrix[i][j] = false
-				j++
-			}
-		}
+
 		// fmt.Println("compareMatrix:",compareMatrix)
-		compare_start := time.Now()
+		var compare_start time.Time
 		if comp_workers == -1 { // let's do number of workers = number of comparisons
+			for i := range compareMatrix {
+				compareMatrix[i] = make([]bool, len(trees))
+				j := i
+				for j < len(compareMatrix[i]) {
+					compareMatrix[i][j] = false
+					j++
+				}
+			}
+			compare_start = time.Now()
 			compTreesMatrix(&compareMatrix, &hashes_map, &trees)
 		} else if comp_workers == 1 {
+			compare_start = time.Now()
 			for _, indices := range hashes_map {
 				if len(indices) > 1 {
 					for i,v := range indices {
@@ -157,7 +160,7 @@ func main() {
 				}
 			}
 		} else if comp_workers > 1 {
-
+			compare_start = time.Now()
 		}
 		
 		compare_elapsed := time.Since(compare_start)
