@@ -95,7 +95,7 @@ func main() {
 		}
 		trees = append(trees, bst)
 	}
-
+	// fmt.Println("trees:",trees)
 	// Calculate hashes
 	hashes_map := make(map[int][]int)
 	c := make(chan hash_val_idx, len(trees))
@@ -106,7 +106,7 @@ func main() {
 	hash_elapsed := time.Since(hash_start)
 
 	fmt.Println("hashTime:",hash_elapsed.Seconds())
-	if comp_workers > 0 || data_workers > 0 {
+	if comp_workers != 0 || data_workers > 0 {
 		hash_group_elapsed := time.Since(hash_start)
 		fmt.Println("hashGroupTime:",hash_group_elapsed.Seconds())
 		if print_groups {
@@ -121,32 +121,72 @@ func main() {
 			}
 		}
 
-		compare_start := time.Now()
 		compareMap := make(map[int][]int)
-		for _, indices := range hashes_map {
-			if len(indices) > 1 {
-				for i,v := range indices {
-					_, found := compareMap[v]
-					if !found {
-						compareMap[v] = []int{v}
-					}
-					for j:=i+1; j<len(indices); j++ {
-						_, found := compareMap[indices[j]]
-						if !found {
-							trees_match := compareTrees(&trees[v],&trees[indices[j]])
-							if trees_match {
-								compareMap[v] = append(compareMap[v],indices[j])
-								compareMap[indices[j]] = []int{v}
-							}
-						}
-					} 
-				}
+		compareMatrix := make([][]bool, len(trees))
+		for i := range compareMatrix {
+			compareMatrix[i] = make([]bool, len(trees))
+			for j := range compareMatrix[i] {
+				compareMatrix[i][j] = false
 			}
 		}
+		// fmt.Println("compareMatrix:",compareMatrix)
+		compare_start := time.Now()
+		if comp_workers == -1 { // let's do number of workers = number of comparisons
+			compTreesMatrix(&compareMatrix, &hashes_map, &trees)
+		} else if comp_workers == 1 {
+			for _, indices := range hashes_map {
+				if len(indices) > 1 {
+					for i,v := range indices {
+						_, found := compareMap[v]
+						if !found {
+							compareMap[v] = []int{v}
+						}
+						for j:=i+1; j<len(indices); j++ {
+							_, found := compareMap[indices[j]]
+							if !found {
+								trees_match := compareTrees(&trees[v],&trees[indices[j]])
+								if trees_match {
+									compareMap[v] = append(compareMap[v],indices[j])
+									compareMap[indices[j]] = []int{v}
+								}
+							}
+						} 
+					}
+				}
+			}
+		} else if comp_workers > 1 {
+
+		}
+		
 		compare_elapsed := time.Since(compare_start)
 		fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
-		group_idx:=0
-		if print_groups {
+		if comp_workers < 0 && print_groups {
+			group_idx := 0
+			seen := make(map[int]bool)
+			for i := range compareMatrix {
+				seen[i] = true
+				if !compareMatrix[i][i] {
+					j := i+1
+					cur := []int{i}
+					for j < len(compareMatrix) {
+						if compareMatrix[i][j] && !seen[j] {
+							seen[j] = true
+							cur = append(cur,j)
+						}
+						j++
+					}
+					if len(cur) > 1 {
+						fmt.Print("group ",group_idx,": ")
+						for _,c := range cur {
+							fmt.Print(c, " ")
+						}
+						fmt.Print("\n")
+						group_idx += 1
+					}
+				}
+			}
+		} else if comp_workers == 1 && print_groups {
+			group_idx:=0
 			for _,groups := range compareMap {
 			
 				if len(groups) > 1 {
@@ -160,9 +200,39 @@ func main() {
 		
 			}
 		}
+
 	}
 }
 
+func compTreesMatrix(matrix *[][]bool, hashes_map *map[int][]int, tree_list *[]TreeNode) {
+	var wg sync.WaitGroup
+	for _, v := range (*hashes_map) {
+		//fmt.Println("ids for curr hash:",v)
+		if len(v) == 1 {
+			//fmt.Println("v:",v)
+			(*matrix)[v[0]][v[0]] = true
+		} else {
+			for i, t1 := range v {
+				j := i+1
+				for j < len(v) {
+					wg.Add(1)
+					t2 := v[j]
+					go compTreesParallel(&(*tree_list)[t1], &(*tree_list)[t2],matrix,t1,t2,&wg)
+					j += 1
+				}
+			}
+		}
+	}
+	wg.Wait()
+}
+func compTreesParallel(root1 *TreeNode, root2 *TreeNode, matrix *[][]bool, idx1 int, idx2 int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	res := compareTrees(root1,root2)
+	if res {
+		(*matrix)[idx1][idx2] = true
+		//(*matrix)[idx2][idx1] = true
+	}
+}
 func calcHashTraversal(root *TreeNode) int {
 	hash_val := 1
 	q := make(stack,0)
