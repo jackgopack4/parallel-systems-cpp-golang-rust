@@ -17,60 +17,6 @@ type hash_val_idx struct {
 	idx int
 }
 
-type TreePair struct {
-	idx1 int
-	idx2 int
-}
-
-
-type Buffer struct {
-	mutex      sync.Mutex
-	notEmpty   *sync.Cond
-	notFull    *sync.Cond
-	buffer     []TreePair
-	maxSize    int
-}
-
-func NewBuffer(capacity int) *Buffer {
-	buffer := make([]TreePair, 0, capacity)
-	return &Buffer{
-		buffer:   buffer,
-		maxSize:  capacity,
-		notEmpty: sync.NewCond(&sync.Mutex{}),
-		notFull:  sync.NewCond(&sync.Mutex{}),
-	}
-}
-
-func (b *Buffer) Write(pair TreePair) {
-
-	b.notFull.L.Lock()
-	for len(b.buffer) == b.maxSize{
-		b.notFull.Wait()
-	}
-	b.notFull.L.Unlock()
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	b.buffer = append(b.buffer, pair)
-	//fmt.Printf("Wrote: %v\n", pair)
-	b.notEmpty.Signal()
-}
-
-func (b *Buffer) Read() TreePair {
-	b.notEmpty.L.Lock()
-	for len(b.buffer) == 0 {
-		b.notEmpty.Wait()
-	}
-	b.notEmpty.L.Unlock()
-	b.mutex.Lock()
-	defer b.mutex.Unlock()
-	pair := b.buffer[0]
-	b.buffer = b.buffer[1:]
-	//fmt.Printf("Read: %v\n", pair)
-	b.notFull.Signal()
-
-	return pair
-}
-
 type stack []*TreeNode
 
 func (s stack) Push(v *TreeNode) stack {
@@ -214,61 +160,7 @@ func main() {
 				}
 			}
 		} else if comp_workers > 1 {
-			for i := range compareMatrix {
-				compareMatrix[i] = make([]bool, len(trees))
-				j := i
-				for j < len(compareMatrix[i]) {
-					compareMatrix[i][j] = false
-					j++
-				}
-			}
-			buffer := NewBuffer(comp_workers)
-			var wg sync.WaitGroup
-			wg.Add(1)
-			pairs_count := 0
-			var pairs_mutex sync.Mutex
 			compare_start = time.Now()
-			go func() {
-				defer wg.Done()
-				for _, v := range (hashes_map) {
-					//fmt.Println("ids for curr hash:",v)
-					if len(v) == 1 {
-						//fmt.Println("v:",v)
-						(compareMatrix)[v[0]][v[0]] = true
-					} else {
-						for i, t1 := range v {
-							j := i+1
-							for j < len(v) {
-								wg.Add(1)
-								t2 := v[j]
-								pair := TreePair{idx1: t1, idx2: t2}
-								pairs_mutex.Lock()
-								pairs_count++
-								pairs_mutex.Unlock()
-								buffer.Write(pair)
-								j += 1
-							}
-						}
-					}
-				}
-			}()
-			for i:=0;i<comp_workers;i++ {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					for pairs_count > 0 {
-						pair := buffer.Read()
-						pairs_mutex.Lock()
-						pairs_count--
-						pairs_mutex.Unlock()
-						t1 := pair.idx1
-						t2 := pair.idx2
-						var tmp_wg sync.WaitGroup
-						compTreesParallel(&(trees)[t1], &(trees)[t2],&compareMatrix,t1,t2,&tmp_wg)
-					}
-				}()
-			}
-			wg.Wait()
 		}
 		
 		compare_elapsed := time.Since(compare_start)
@@ -298,7 +190,7 @@ func main() {
 					}
 				}
 			}
-		} else if comp_workers >= 1 && print_groups {
+		} else if comp_workers == 1 && print_groups {
 			group_idx:=0
 			for _,groups := range compareMap {
 			
