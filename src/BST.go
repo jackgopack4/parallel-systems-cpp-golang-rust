@@ -125,8 +125,10 @@ func main() {
 		compareMatrix := make([][]bool, len(trees))
 		for i := range compareMatrix {
 			compareMatrix[i] = make([]bool, len(trees))
-			for j := range compareMatrix[i] {
+			j := i
+			for j < len(compareMatrix[i]) {
 				compareMatrix[i][j] = false
+				j++
 			}
 		}
 		// fmt.Println("compareMatrix:",compareMatrix)
