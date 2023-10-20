@@ -29,16 +29,19 @@ type Buffer struct {
 	notEmpty *sync.Cond
 	notFull *sync.Cond
 	num_remaining int
+	remain_lock *sync.RWMutex
 }
 
 func NewBuffer(max_len int, num_remaining int) *Buffer {
 	b := new(Buffer)
 	b.max_len = max_len
-	b.data = make([]tree_pair,max_len)
+	b.data = make([]tree_pair,0)
 	b.lock = &sync.Mutex{}
 	b.notEmpty = sync.NewCond(&sync.Mutex{})
 	b.notFull = sync.NewCond(&sync.Mutex{})
 	b.num_remaining = num_remaining
+	b.remain_lock = &sync.RWMutex{}
+	return b
 }
 
 func (b *Buffer) Push(pair tree_pair) {
@@ -48,21 +51,60 @@ func (b *Buffer) Push(pair tree_pair) {
 		b.notFull.Wait()
 	}
 	b.lock.Lock()
+	//. fmt.Println("buffer before push:",b.data)
 	b.data = append(b.data,pair)
+	//. fmt.Println("buffer after push:",b.data)
 	b.lock.Unlock()
 	b.notEmpty.Signal()
 }
 
-func (b *Buffer) Pop() tree_pair {
+func (b *Buffer) Pop(id int) tree_pair {
+	b.remain_lock.Lock()
+	if b.num_remaining < 1 {
+		b.remain_lock.Unlock()
+		//b.notEmpty.Signal()
+		return tree_pair{idx1:-1,idx2:-1}
+	}
+	b.remain_lock.Unlock()
 	b.notEmpty.L.Lock()
 	defer b.notEmpty.L.Unlock()
+	//count :=0
 	for len(b.data) <= 0 {
+		/*
+		if count == 0 {
+			//. fmt.Println("waiting for notEmpty signal worker id",id)
+		}
+		*/
+		//count++
 		b.notEmpty.Wait()
 	}
 	b.lock.Lock()
-	res := b.data[len(b.data)-1]
-	b.data = b.data[:len(b.data)-1]
-	b.num_remaining--
+	var res tree_pair
+	b.remain_lock.Lock()
+	if len(b.data) > 0 {
+		b.remain_lock.Unlock()
+		//. fmt.Println("buffer before Pop worker",id,":",b.data)
+		res = b.data[len(b.data)-1]
+		b.data = b.data[:len(b.data)-1]
+		//. fmt.Println("buffer after Pop worker",id,":",b.data)
+		b.remain_lock.Lock()
+		if res.idx1 != -1 && res.idx2 != -1 {
+			b.num_remaining--
+		}
+		if b.num_remaining <= 0 {
+			//. fmt.Println("broadcasting notFull and notEmpty")
+			for i:=0;i<=b.max_len;i++ {
+				b.notEmpty.Broadcast()
+				b.notFull.Broadcast()
+			}
+		}
+		b.remain_lock.Unlock()
+	} else {
+		b.remain_lock.Unlock()
+		res = tree_pair{idx1:-1,idx2:-1}
+		b.notFull.Broadcast()
+		b.notEmpty.Broadcast()
+	}
 	b.lock.Unlock()
 	b.notFull.Signal()
 	return res
@@ -146,7 +188,7 @@ func main() {
 		}
 		trees = append(trees, bst)
 	}
-	// fmt.Println("trees:",trees)
+	//fmt.Println("trees:",trees)
 	// Calculate hashes
 	hashes_map := make(map[int][]int)
 	c := make(chan hash_val_idx, len(trees))
@@ -175,7 +217,6 @@ func main() {
 		compareMap := make(map[int][]int)
 		compareMatrix := make([][]bool, len(trees))
 
-		// fmt.Println("compareMatrix:",compareMatrix)
 		var compare_start time.Time
 		if comp_workers == -1 { // let's do number of workers = number of comparisons
 			for i := range compareMatrix {
@@ -211,12 +252,104 @@ func main() {
 				}
 			}
 		} else if comp_workers > 1 {
+			for i := range compareMatrix {
+				compareMatrix[i] = make([]bool, len(trees))
+				j := i
+				for j < len(compareMatrix[i]) {
+					compareMatrix[i][j] = false
+					j++
+				}
+			}
+			num_remaining := 0
+			for _, indices := range hashes_map {
+				if len(indices) > 1 {
+					for i:=0;i<len(indices);i++ {
+						for j:=i+1; j<len(indices);j++ {
+							num_remaining++
+						}
+					}
+				}
+			}
 			compare_start = time.Now()
+			var wg sync.WaitGroup
+			var num_workers int
+			if comp_workers > num_remaining {
+				num_workers = num_remaining
+			} else {
+				num_workers = comp_workers
+			}
+			buffer := NewBuffer(num_workers,num_remaining)
+			for i:=0;i<num_workers;i++ {
+				wg.Add(1)
+				go func(worker_id int) {
+					//. fmt.Println("launched worker_id",worker_id)
+					defer wg.Done()
+					buffer.remain_lock.Lock()
+					for {
+						buffer.remain_lock.Unlock()
+						pair := buffer.Pop(worker_id)
+						//. fmt.Println("popped buffer worker_id",worker_id,":",pair)
+						idx1 := pair.idx1
+						idx2 := pair.idx2
+						if idx1 == -1 || idx2 == -1 {
+							/*
+							fmt.Println("pushing empty item")
+							for j:=1;j<=buffer.num_remaining;j++ {
+								buffer.Push(pair)
+
+								buffer.notFull.Broadcast()
+							}
+							*/
+							buffer.notEmpty.Broadcast()
+							buffer.notFull.Broadcast()
+							break
+						} else {
+							res := compareTrees(&trees[idx1],&trees[idx2])
+							if res {
+								compareMatrix[idx1][idx2] = true
+							}
+						}
+						buffer.remain_lock.Lock()
+					}
+					buffer.remain_lock.TryLock()
+					buffer.remain_lock.Unlock()
+					
+					//. fmt.Println("finished worker_id",worker_id)
+					buffer.Push(tree_pair{idx1:-1,idx2:-1})
+					for j := 0; j <= num_workers+1; j++ {
+						buffer.notEmpty.Broadcast()
+						buffer.notFull.Broadcast()
+					}
+				}(i)
+			}
+			wg.Add(1)
+			go func() {
+				//. fmt.Println("launched push function")
+				defer wg.Done()
+
+				for _, indices := range hashes_map {
+					if len(indices) == 1 {
+						compareMatrix[indices[0]][indices[0]] = true
+					} else if len(indices) > 1 {
+						for i,v := range indices {
+							for j:=i+1;j<len(indices);j++ {
+								//. fmt.Println("pushing tree_pair: {",v,",",indices[j],"}")
+								buffer.Push(tree_pair{idx1:v,idx2:indices[j]})
+							}
+						}
+					}
+				}
+				//. fmt.Println("finished push function")
+				buffer.notEmpty.Broadcast()
+				buffer.notFull.Broadcast()
+			}()
+			wg.Wait()
 		}
 		
 		compare_elapsed := time.Since(compare_start)
 		fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
-		if comp_workers < 0 && print_groups {
+		if (comp_workers < 0 || comp_workers > 1) && print_groups {
+			//. fmt.Println("compareMatrix:",compareMatrix)
 			group_idx := 0
 			seen := make(map[int]bool)
 			for i := range compareMatrix {
@@ -349,7 +482,7 @@ func calcHashes(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers in
 		if lock_hashcomp {
 			for i:=0;i<num_workers;i++ {
 				wg.Add(1)
-				go calcHashesWorkerLock(tree_list,hashes_map,num_workers,i,&wg,lock)
+				go calcHashesWorkeLock(tree_list,hashes_map,num_workers,i,&wg,lock)
 			}
 		} else {
 			wg.Add(1)
@@ -373,7 +506,7 @@ func calcHashesWorkerChan(tree_list *[]TreeNode, num_workers int, idx int, wg *s
 	}
 }
 
-func calcHashesWorkerLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
+func calcHashesWorkeLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
 	defer wg.Done()
 	for idx < len(*tree_list) {
 		hash_val := calcHashTraversal(&(*tree_list)[idx])
