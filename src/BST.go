@@ -31,6 +31,16 @@ type Buffer struct {
 	num_remaining int
 }
 
+func NewBuffer(max_len int, num_remaining int) *Buffer {
+	b := new(Buffer)
+	b.max_len = max_len
+	b.data = make([]tree_pair,max_len)
+	b.lock = &sync.Mutex{}
+	b.notEmpty = sync.NewCond(&sync.Mutex{})
+	b.notFull = sync.NewCond(&sync.Mutex{})
+	b.num_remaining = num_remaining
+}
+
 func (b *Buffer) Push(pair tree_pair) {
 	b.notFull.L.Lock()
 	defer b.notFull.L.Unlock()
