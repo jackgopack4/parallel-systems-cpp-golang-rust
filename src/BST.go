@@ -16,116 +16,46 @@ type hash_val_idx struct {
 	val int
 	idx int
 }
-type ComparisonPair struct {
-	ID1 int
-	ID2 int
+
+type tree_pair struct {
+	idx1 int
+	idx2 int
 }
 
-type Result struct {
-	ID1       int
-	ID2       int
-	IsEqual   bool
-}
-
-type Worker struct {
-	ID           int
-	Buffer       *ConcurrentBuffer
-	ch 					*chan int
-}
-
-type ThreadPool struct {
-	Workers []*Worker
-}
-
-func NewThreadPool(numWorkers, bufferSize int) *ThreadPool {
-	pool := &ThreadPool{}
-	pool.Workers = make([]*Worker, numWorkers)
-	buffer := NewConcurrentBuffer(bufferSize)
-
-	for i := 0; i < numWorkers; i++ {
-		worker := &Worker{
-			ID:       i + 1,
-			Buffer:   buffer,
-		}
-		pool.Workers[i] = worker
-	}
-
-	return pool
-}
-
-type ConcurrentBuffer struct {
-	lock    sync.Mutex
-	readlock sync.Mutex
+type Buffer struct {
+	data []tree_pair
+	max_len int
+	lock *sync.Mutex
 	notEmpty *sync.Cond
-	notFull  *sync.Cond
-	numLeftLock sync.Mutex
-	buffer  []ComparisonPair
-	popindex int
-	maxSize int
-	numLeft int
+	notFull *sync.Cond
+	num_remaining int
 }
 
-func NewConcurrentBuffer(maxSize int) *ConcurrentBuffer {
-	buffer := &ConcurrentBuffer{
-		buffer:  make([]ComparisonPair, 0, maxSize),
-		maxSize: maxSize,
-	}
-	buffer.lock = sync.Mutex{}
-	buffer.readlock = sync.Mutex{}
-	buffer.numLeftLock = sync.Mutex{}
-	buffer.notEmpty = sync.NewCond(&sync.Mutex{})
-	buffer.notFull = sync.NewCond(&sync.Mutex{})
-	buffer.popindex = 0
-	return buffer
-}
-
-func (b *ConcurrentBuffer) Push(pair ComparisonPair) {
-	//fmt.Println("buffer before push:",b.buffer, "numLeft:",b.numLeft)
-	//fmt.Println("called Push for {",pair.ID1,",",pair.ID2,"}")
+func (b *Buffer) Push(pair tree_pair) {
 	b.notFull.L.Lock()
-	//fmt.Println("locked b.notFull.L inside Push")
-	for len(b.buffer) >= b.popindex + b.maxSize{
-		//fmt.Println("waiting for b.notFull")
+	defer b.notFull.L.Unlock()
+	for len(b.data) >= b.max_len {
 		b.notFull.Wait()
 	}
-	//fmt.Println("attempting to lock b.lock inside Push")
 	b.lock.Lock()
-	//fmt.Println("locked b.lock inside Push")
-	b.buffer = append(b.buffer, pair)
-	//fmt.Println("buffer after push:",b.buffer,"numLeft:",b.numLeft)
-	b.notFull.L.Unlock()
-	//fmt.Println("unlocked b.notFull.L inside Push")
+	b.data = append(b.data,pair)
 	b.lock.Unlock()
-	//fmt.Println("unlocked b.lock inside Push")
 	b.notEmpty.Signal()
-	//fmt.Println("signalled b.notEmpty inside Push")
 }
 
-func (b *ConcurrentBuffer) Pop() ComparisonPair {
-	//fmt.Println("buffer before Pop:",b.buffer,"numLeft:",b.numLeft)
-	//fmt.Println("called Pop")
+func (b *Buffer) Pop() tree_pair {
 	b.notEmpty.L.Lock()
-	b.readlock.Lock()
-	//fmt.Println("Locked notEmpty.L")
-	for b.popindex >= len(b.buffer) {
-		//fmt.Println("waiting for notEmpty")
+	defer b.notEmpty.L.Unlock()
+	for len(b.data) <= 0 {
 		b.notEmpty.Wait()
 	}
-	//fmt.Println("attempting to lock b.lock inside Pop")
-
-	//fmt.Println("locked b.lock inside Pop")
-	pair := b.buffer[b.popindex]
-	b.popindex++
-	//b.buffer = b.buffer[:len(b.buffer)-1]
-	//b.numLeft--
-	//fmt.Println("buffer after pop:",b.buffer,"numLeft:",b.numLeft)
-	b.notEmpty.L.Unlock()
-	//fmt.Println("unlocked b.NotEmpty.L inside Pop")
-	b.readlock.Unlock()
-	//fmt.Println("unlocked b.lock inside Pop")
+	b.lock.Lock()
+	res := b.data[len(b.data)-1]
+	b.data = b.data[:len(b.data)-1]
+	b.num_remaining--
+	b.lock.Unlock()
 	b.notFull.Signal()
-	//fmt.Println("signalled b.notFull inside Pop")
-	return pair
+	return res
 }
 
 type stack []*TreeNode
@@ -237,7 +167,7 @@ func main() {
 
 		// fmt.Println("compareMatrix:",compareMatrix)
 		var compare_start time.Time
-		if comp_workers < 0 { // let's do number of workers = number of comparisons
+		if comp_workers == -1 { // let's do number of workers = number of comparisons
 			for i := range compareMatrix {
 				compareMatrix[i] = make([]bool, len(trees))
 				j := i
@@ -271,27 +201,15 @@ func main() {
 				}
 			}
 		} else if comp_workers > 1 {
-			for i := range compareMatrix {
-				compareMatrix[i] = make([]bool, len(trees))
-				j := i
-				for j < len(compareMatrix[i]) {
-					compareMatrix[i][j] = false
-					j++
-				}
-			}
-			pool := NewThreadPool(comp_workers,comp_workers)
 			compare_start = time.Now()
-			pool.compTreesWorkers(&compareMatrix,&hashes_map,&trees)
 		}
 		
 		compare_elapsed := time.Since(compare_start)
 		fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
-		if (comp_workers < 0 || comp_workers > 1) && print_groups {
-			fmt.Println("printing comp groups")
+		if comp_workers < 0 && print_groups {
 			group_idx := 0
 			seen := make(map[int]bool)
 			for i := range compareMatrix {
-				fmt.Println("seeing index",i,"of compareMatrix")
 				seen[i] = true
 				if !compareMatrix[i][i] {
 					j := i+1
@@ -353,101 +271,6 @@ func compTreesMatrix(matrix *[][]bool, hashes_map *map[int][]int, tree_list *[]T
 	}
 	wg.Wait()
 }
-
-func (pool *ThreadPool) compTreesWorkers(matrix *[][]bool, hashes_map *map[int][]int,tree_list *[]TreeNode) {
-	bufferSize := len(pool.Workers) // allow for -1 vals at end to close channel
-	//var buffer *ConcurrentBuffer
-	buffer := NewConcurrentBuffer(bufferSize)
-	numCompare := 0
-	for _, v := range (*hashes_map) {
-		//fmt.Println("ids for curr hash:",v)
-		if len(v) == 1 {
-			//fmt.Println("v:",v)
-			(*matrix)[v[0]][v[0]] = true
-		} else {
-			for i, _ := range v {
-				j := i+1
-				for j < len(v) {
-					numCompare++
-					j += 1
-				}
-			}
-		}
-	}
-	buffer.numLeftLock.Lock()
-	buffer.numLeft = numCompare
-	buffer.numLeftLock.Unlock()
-	fmt.Println("num to compare:",numCompare)
-	var wg sync.WaitGroup
-	ch := make(chan int)
-
-	for _, worker := range pool.Workers {
-		worker.Buffer = buffer
-		worker.ch = &ch
-		//buffer.Push(ComparisonPair{ID1: -1, ID2: -1})
-	}
-	//wg.Add(1)
-	//go func() {
-		//defer wg.Done()
-	//}()
-
-
-	for _, worker := range pool.Workers {
-		wg.Add(1)
-		go func(w *Worker) {
-			defer wg.Done()
-			for {
-					/*
-					if buffer.numLeft <= i {
-						fmt.Println("quitting goroutine",i)
-						break
-					}
-					*/
-					pair := buffer.Pop()
-					res := compareTrees(&(*tree_list)[pair.ID1],&(*tree_list)[pair.ID2])
-					if res {
-						(*matrix)[pair.ID1][pair.ID2] = true
-					}
-
-					buffer.numLeftLock.Lock()
-					buffer.numLeft--
-					fmt.Println("buffer:",buffer.buffer)
-					if buffer.numLeft < worker.ID {
-						buffer.numLeftLock.Unlock()
-						break
-					}
-					buffer.numLeftLock.Unlock()
-				}
-		}(worker)
-	}
-	wg.Add(1)
-	go func() {
-		for _, v := range (*hashes_map) {
-			//fmt.Println("ids for curr hash:",v)
-			if len(v) == 1 {
-				//fmt.Println("v:",v)
-				(*matrix)[v[0]][v[0]] = true
-			} else {
-				//fmt.Println("eq hashes:",v)
-				for i, t1 := range v {
-					j := i+1
-					for j < len(v) {
-						//wg.Add(1)
-						t2 := v[j]
-						fmt.Println("pushing to buffer", t1,t2)
-						buffer.Push(ComparisonPair{ID1:t1,ID2:t2})
-						j += 1
-					}
-				}
-			}
-		}
-	}()
-
-	wg.Wait()
-
-}
-
-
 func compTreesParallel(root1 *TreeNode, root2 *TreeNode, matrix *[][]bool, idx1 int, idx2 int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	res := compareTrees(root1,root2)
