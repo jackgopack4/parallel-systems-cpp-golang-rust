@@ -145,7 +145,7 @@ func insertNode(root *TreeNode, value int) *TreeNode {
 func main() {
 	var filename string
 	var hash_workers, data_workers, comp_workers int
-	var print_groups,equal_workers,lock_hashcomp, show_hashtime bool
+	var print_groups,equal_workers,lock_hashcomp, show_hashtime, show_hashgrouptime bool
 	flag.StringVar(&filename, "filename", "", "string-valued path to an input file")
 	flag.IntVar(&hash_workers,"hash-workers", 0, "integer-valued number of threads")
 	flag.IntVar(&data_workers,"data-workers", 0, "integer-valued number of threads")
@@ -153,7 +153,8 @@ func main() {
 	flag.BoolVar(&print_groups,"print-groups",true,"print hash groups and compare groups")
 	flag.BoolVar(&equal_workers,"equal-workers",false,"spawn num of goroutines equal to num BSTs")
 	flag.BoolVar(&lock_hashcomp,"lock-hashcomp",false,"use lock to protect hashesMap data struct")
-	flag.BoolVar(&show_hashtime,"show-hashtime",true,"output hashtime")
+	flag.BoolVar(&show_hashtime,"show-hashtime",true,"output hashTime")
+	flag.BoolVar(&show_hashgrouptime,"show-hashgrouptime",true,"output hashGroupTime")
 	flag.Parse()
 	if filename == "" {
 		fmt.Println("Usage: go run filename.go -filename=sample-file.txt")
@@ -207,15 +208,17 @@ func main() {
 	}
 	if comp_workers != 0 || data_workers > 0 {
 		hash_group_elapsed := time.Since(hash_start)
-		fmt.Println("hashGroupTime:",hash_group_elapsed.Seconds())
-		if print_groups {
-			for k, indices := range hashes_map {
-				if len(indices) > 1 {
-					fmt.Print(k,": ")
-					for _,v := range indices {
-						fmt.Print(v," ")
+		if show_hashgrouptime {
+			fmt.Println("hashGroupTime:",hash_group_elapsed.Seconds())
+			if print_groups {
+				for k, indices := range hashes_map {
+					if len(indices) > 1 {
+						fmt.Print(k,": ")
+						for _,v := range indices {
+							fmt.Print(v," ")
+						}
+						fmt.Print("\n")
 					}
-					fmt.Print("\n")
 				}
 			}
 		}
@@ -354,48 +357,54 @@ func main() {
 		}
 		
 		compare_elapsed := time.Since(compare_start)
-		if (comp_workers < 0 || comp_workers > 1) && print_groups {
+		if comp_workers != 0 {
 			fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
-			//. fmt.Println("compareMatrix:",compareMatrix)
-			group_idx := 0
-			seen := make(map[int]bool)
-			for i := range compareMatrix {
-				seen[i] = true
-				if !compareMatrix[i][i] {
-					j := i+1
-					cur := []int{i}
-					for j < len(compareMatrix) {
-						if compareMatrix[i][j] && !seen[j] {
-							seen[j] = true
-							cur = append(cur,j)
+
+		}
+		if print_groups {
+			if comp_workers < 0 || comp_workers > 1 {
+				//. fmt.Println("compareMatrix:",compareMatrix)
+				group_idx := 0
+				seen := make(map[int]bool)
+				for i := range compareMatrix {
+					seen[i] = true
+					if !compareMatrix[i][i] {
+						j := i+1
+						cur := []int{i}
+						for j < len(compareMatrix) {
+							if compareMatrix[i][j] && !seen[j] {
+								seen[j] = true
+								cur = append(cur,j)
+							}
+							j++
 						}
-						j++
+						if len(cur) > 1 {
+							fmt.Print("group ",group_idx,": ")
+							for _,c := range cur {
+								fmt.Print(c, " ")
+							}
+							fmt.Print("\n")
+							group_idx += 1
+						}
 					}
-					if len(cur) > 1 {
+				}
+			} else if comp_workers == 1 {
+				group_idx:=0
+				for _,groups := range compareMap {
+				
+					if len(groups) > 1 {
 						fmt.Print("group ",group_idx,": ")
-						for _,c := range cur {
-							fmt.Print(c, " ")
+						for _,g := range groups {
+							fmt.Print(g, " ")
 						}
 						fmt.Print("\n")
 						group_idx += 1
 					}
-				}
-			}
-		} else if comp_workers == 1 && print_groups {
-			group_idx:=0
-			for _,groups := range compareMap {
 			
-				if len(groups) > 1 {
-					fmt.Print("group ",group_idx,": ")
-					for _,g := range groups {
-						fmt.Print(g, " ")
-					}
-					fmt.Print("\n")
-					group_idx += 1
 				}
-		
 			}
 		}
+
 
 	}
 }
