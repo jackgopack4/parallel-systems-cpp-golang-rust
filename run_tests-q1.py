@@ -32,28 +32,22 @@ for idx, inp in enumerate(inps):
     # if step > 1:
     #    hash_workers.append(1)
     # hash_workers.extend(range(step, lengths[idx] + 1, step))
-    for dw in range(2):
-        for hw in hash_workers:
-            if dw == 1:
-                dw_num = hw
-            else:
-                dw_num = 1
-            cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw} -data-workers={dw_num} -show-hashtime=false -print-groups=false"
-            for i in range(NUM_SAMPLES):
-                out = check_output(cmd, shell=True).decode("ascii")
-                # print(f"output: {out}")
-                m = re.search(r"[-+]?\d*\.\d+e[-+]?\d+|\b\d+\.\d+\b", out)
-                # print(f"m: {m}")
-                if m:
-                    time = float(m.group())
-                    if hw not in times:
-                        times[hw] = [time]
-                    else:
-                        times[hw].append(time)
-            avg_time = mean(times[hw])
-            print(
-                f"average hashGroupTime for {hw} hash-workers and {dw_num} data-workers: {avg_time:.4e}"
-            )
+
+    for hw in hash_workers:
+        cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw}"
+        for i in range(NUM_SAMPLES):
+            out = check_output(cmd, shell=True).decode("ascii")
+            # print(f"output: {out}")
+            m = re.search(r"[-+]?\d*\.\d+e[-+]?\d+|\b\d+\.\d+\b", out)
+            # print(f"m: {m}")
+            if m:
+                time = float(m.group())
+                if hw not in times:
+                    times[hw] = [time]
+                else:
+                    times[hw].append(time)
+        avg_time = mean(times[hw])
+        print(f"average runtime for {hw} hash-workers: {avg_time:.4e}")
 
 """
 for thr in THREADS:

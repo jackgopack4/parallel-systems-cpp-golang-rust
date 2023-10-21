@@ -145,7 +145,7 @@ func insertNode(root *TreeNode, value int) *TreeNode {
 func main() {
 	var filename string
 	var hash_workers, data_workers, comp_workers int
-	var print_groups,equal_workers,lock_hashcomp bool
+	var print_groups,equal_workers,lock_hashcomp, show_hashtime bool
 	flag.StringVar(&filename, "filename", "", "string-valued path to an input file")
 	flag.IntVar(&hash_workers,"hash-workers", 0, "integer-valued number of threads")
 	flag.IntVar(&data_workers,"data-workers", 0, "integer-valued number of threads")
@@ -153,6 +153,7 @@ func main() {
 	flag.BoolVar(&print_groups,"print-groups",true,"print hash groups and compare groups")
 	flag.BoolVar(&equal_workers,"equal-workers",false,"spawn num of goroutines equal to num BSTs")
 	flag.BoolVar(&lock_hashcomp,"lock-hashcomp",false,"use lock to protect hashesMap data struct")
+	flag.BoolVar(&show_hashtime,"show-hashtime",true,"output hashtime")
 	flag.Parse()
 	if filename == "" {
 		fmt.Println("Usage: go run filename.go -filename=sample-file.txt")
@@ -195,10 +196,15 @@ func main() {
 	c := make(chan hash_val_idx, len(trees))
 
 	hash_start := time.Now()
+	if hash_workers == data_workers && hash_workers > 1 {
+		lock_hashcomp = true
+	}
 	calcHashes(&trees,&hashes_map,num_hashworkers, c,lock_hashcomp,&hashes_lock)
 	hash_elapsed := time.Since(hash_start)
 
-	fmt.Println("hashTime:",hash_elapsed.Seconds())
+	if show_hashtime {
+		fmt.Println("hashTime:",hash_elapsed.Seconds())
+	}
 	if comp_workers != 0 || data_workers > 0 {
 		hash_group_elapsed := time.Since(hash_start)
 		fmt.Println("hashGroupTime:",hash_group_elapsed.Seconds())
@@ -348,8 +354,8 @@ func main() {
 		}
 		
 		compare_elapsed := time.Since(compare_start)
-		fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
 		if (comp_workers < 0 || comp_workers > 1) && print_groups {
+			fmt.Println("compareTreeTime:",compare_elapsed.Seconds())
 			//. fmt.Println("compareMatrix:",compareMatrix)
 			group_idx := 0
 			seen := make(map[int]bool)
