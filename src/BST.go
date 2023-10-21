@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"sync/atomic"
 )
 
 type hash_val_idx struct {
@@ -43,6 +44,16 @@ func NewBuffer(max_len int, num_remaining int) *Buffer {
 	b.remain_lock = &sync.Mutex{}
 	return b
 }
+func Close(alive *[]int32, b *Buffer) {
+	max_len := b.max_len
+	for i:=0;i<max_len;i++ {
+		tmp := atomic.LoadInt32(&(*alive)[i])
+		if tmp == 1 {
+			b.notEmpty.Broadcast()
+			b.notFull.Broadcast()
+		}
+	}
+}
 
 func (b *Buffer) Push(pair tree_pair) {
 	b.notFull.L.Lock()
@@ -58,7 +69,7 @@ func (b *Buffer) Push(pair tree_pair) {
 	b.notEmpty.Signal()
 }
 
-func (b *Buffer) Pop(id int) tree_pair {
+func (b *Buffer) Pop(id int, alive *[]int32) tree_pair {
 	b.remain_lock.Lock()
 	if b.num_remaining < 1 {
 		b.remain_lock.Unlock()
@@ -69,6 +80,8 @@ func (b *Buffer) Pop(id int) tree_pair {
 	b.notEmpty.L.Lock()
 	defer b.notEmpty.L.Unlock()
 	//count :=0
+	atomic.StoreInt32(&(*alive)[id], 1)
+	defer atomic.StoreInt32(&(*alive)[id],0)
 	for len(b.data) <= 0 {
 		/*
 		if count == 0 {
@@ -292,6 +305,7 @@ func main() {
 			} else {
 				num_workers = comp_workers
 			}
+			alive := make([]int32, num_workers)
 			buffer := NewBuffer(num_workers,num_remaining)
 			for i:=0;i<num_workers;i++ {
 				wg.Add(1)
@@ -302,7 +316,7 @@ func main() {
 					buffer.remain_lock.Lock()
 					for {
 						buffer.remain_lock.Unlock()
-						pair := buffer.Pop(worker_id)
+						pair := buffer.Pop(worker_id, &alive)
 						//. fmt.Println("popped buffer worker_id",worker_id,":",pair)
 						idx1 := pair.idx1
 						idx2 := pair.idx2
@@ -332,7 +346,8 @@ func main() {
 					
 					//. fmt.Println("finished worker_id",worker_id)
 					buffer.Push(tree_pair{idx1:-1,idx2:-1})
-					for j := 0; j <= num_workers+1; j++ {
+					Close(&alive,buffer)
+					for j := 0; j <= num_workers*2; j++ {
 						buffer.notEmpty.Broadcast()
 						buffer.notFull.Broadcast()
 					}

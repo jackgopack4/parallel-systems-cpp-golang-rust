@@ -28,7 +28,7 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = [1, 2, 4, 6, 8, 10, 12, 14, 16, -1]
+    hash_workers = [1,2,4,6,8,10,12,14, 16, -1]
     # if step > 1:
     #    hash_workers.append(1)
     # hash_workers.extend(range(step, lengths[idx] + 1, step))

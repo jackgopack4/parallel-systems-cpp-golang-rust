@@ -17,7 +17,7 @@ from statistics import mean
 NUM_SAMPLES = 10
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse,txt", "fine.txt"]
+inps = ["coarse.txt", "fine.txt"]
 lengths = [100, 100000]
 iteration_max = 25
 csvs = []
