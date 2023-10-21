@@ -28,10 +28,10 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = []
-    if step > 1:
-        hash_workers.append(1)
-    hash_workers.extend(range(step, lengths[idx] + 1, step))
+    hash_workers = [1, 2, 4, 8, 16, lengths[idx]]
+    # if step > 1:
+    #    hash_workers.append(1)
+    # hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:
         cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw}"

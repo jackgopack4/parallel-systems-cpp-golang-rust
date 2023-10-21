@@ -191,8 +191,8 @@ func main() {
 	//fmt.Println("trees:",trees)
 	// Calculate hashes
 	hashes_map := make(map[int][]int)
-	c := make(chan hash_val_idx, len(trees))
 	num_hashworkers := calcHashWorkers(hash_workers,equal_workers,len(trees))
+	c := make(chan hash_val_idx, len(trees))
 
 	hash_start := time.Now()
 	calcHashes(&trees,&hashes_map,num_hashworkers, c,lock_hashcomp,&hashes_lock)
@@ -483,7 +483,7 @@ func calcHashes(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers in
 		if lock_hashcomp {
 			for i:=0;i<num_workers;i++ {
 				wg.Add(1)
-				go calcHashesWorkeLock(tree_list,hashes_map,num_workers,i,&wg,lock)
+				go calcHashesWorkerLock(tree_list,hashes_map,num_workers,i,&wg,lock)
 			}
 		} else {
 			wg.Add(1)
@@ -507,7 +507,7 @@ func calcHashesWorkerChan(tree_list *[]TreeNode, num_workers int, idx int, wg *s
 	}
 }
 
-func calcHashesWorkeLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
+func calcHashesWorkerLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
 	defer wg.Done()
 	for idx < len(*tree_list) {
 		hash_val := calcHashTraversal(&(*tree_list)[idx])
@@ -559,8 +559,6 @@ func calcHashWorkers(hash_workers int, equal_workers bool, length int) int {
 		num_hashworkers = 1
 	} else if equal_workers {
 		num_hashworkers = length
-	} else if hash_workers > 10000 {
-		num_hashworkers = 10000
 	} else {
 		num_hashworkers = hash_workers
 	}
