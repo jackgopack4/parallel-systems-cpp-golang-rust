@@ -29,7 +29,7 @@ type Buffer struct {
 	notEmpty *sync.Cond
 	notFull *sync.Cond
 	num_remaining int
-	remain_lock *sync.RWMutex
+	remain_lock *sync.Mutex
 }
 
 func NewBuffer(max_len int, num_remaining int) *Buffer {
@@ -40,7 +40,7 @@ func NewBuffer(max_len int, num_remaining int) *Buffer {
 	b.notEmpty = sync.NewCond(&sync.Mutex{})
 	b.notFull = sync.NewCond(&sync.Mutex{})
 	b.num_remaining = num_remaining
-	b.remain_lock = &sync.RWMutex{}
+	b.remain_lock = &sync.Mutex{}
 	return b
 }
 
@@ -302,6 +302,7 @@ func main() {
 							*/
 							buffer.notEmpty.Broadcast()
 							buffer.notFull.Broadcast()
+							buffer.remain_lock.Lock()
 							break
 						} else {
 							res := compareTrees(&trees[idx1],&trees[idx2])
@@ -311,7 +312,7 @@ func main() {
 						}
 						buffer.remain_lock.Lock()
 					}
-					buffer.remain_lock.TryLock()
+					//buffer.remain_lock.TryLock()
 					buffer.remain_lock.Unlock()
 					
 					//. fmt.Println("finished worker_id",worker_id)
