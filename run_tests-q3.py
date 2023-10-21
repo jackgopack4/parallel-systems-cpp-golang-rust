@@ -28,7 +28,7 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = [1, 2, 4, 6, 8, 10, 12, 14, 16]
+    hash_workers = [1, 2, 4, 6, 8, 10, 12, 14, 16, -1]
     # if step > 1:
     #    hash_workers.append(1)
     # hash_workers.extend(range(step, lengths[idx] + 1, step))
@@ -46,7 +46,7 @@ for idx, inp in enumerate(inps):
                 else:
                     times[hw].append(time)
         avg_time = mean(times[hw])
-        print(f"average compareTreeTime for {hw} comp-workers: {avg_time:.4e}")
+        print(f"{avg_time:.4e}")
 
 """
 for thr in THREADS:
