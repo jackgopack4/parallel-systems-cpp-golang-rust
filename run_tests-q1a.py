@@ -34,7 +34,7 @@ for idx, inp in enumerate(inps):
     # hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:
-        cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw} -equal-workers=true"
+        cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw}"
         for i in range(NUM_SAMPLES):
             out = check_output(cmd, shell=True).decode("ascii")
             # print(f"output: {out}")

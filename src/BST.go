@@ -202,13 +202,15 @@ func main() {
 		lock_hashcomp = true
 	}
 	calcHashes(&trees,&hashes_map,&hashes,num_hashworkers, c,lock_hashcomp,&hashes_lock, equal_workers)
+	//fmt.Println("calcHashes call past")
 	hash_elapsed := time.Since(hash_start)
-	if equal_workers {
-		loadHashMap(&hashes, &hashes_map)
-	}
+
 	if show_hashtime {
 		fmt.Println("hashTime:",hash_elapsed.Seconds())
 	}
+	if equal_workers || num_hashworkers <= 1 {
+		loadHashMap(&hashes, &hashes_map)
+	} 
 	if comp_workers != 0 || data_workers > 0 {
 		hash_group_elapsed := time.Since(hash_start)
 		if show_hashgrouptime {
@@ -293,6 +295,7 @@ func main() {
 			buffer := NewBuffer(num_workers,num_remaining)
 			for i:=0;i<num_workers;i++ {
 				wg.Add(1)
+				i := i
 				go func(worker_id int) {
 					//. fmt.Println("launched worker_id",worker_id)
 					defer wg.Done()
@@ -487,22 +490,24 @@ func calcHashes(tree_list *[]TreeNode, hashes_map *map[int][]int, hash_list *[]i
 	}
 	if equal_workers {
 		var wg sync.WaitGroup
-		fmt.Println("launching num hashWorkers for length of trees")
-		for i:=0;i<len(*tree_list);i++ {
-			wg.Add(1)
-			go calcHashesWorkerEqual(tree_list,hash_list,i, &wg)
+		//fmt.Println("launching num hashWorkers for length of trees")
+		if num_workers > 1 {
+			for i :=0;i<num_workers;i++ {
+				wg.Add(1)
+				go calcHashesWorkerIterate(tree_list,hash_list,i,num_workers,&wg)
+			}
+		} else {
+			for i:=0;i<len(*tree_list);i++ {
+				wg.Add(1)
+				go calcHashesWorkerEqual(tree_list,hash_list,i, &wg)
+			}
 		}
+
 		wg.Wait()
+		//fmt.Println("equal_workers_calcHashes finished")
 	} else if num_workers <= 1 {
 		for idx := range *tree_list {
-			hash_val := calcHashTraversal(&(*tree_list)[idx])
-			indices, found := (*hashes_map)[hash_val]
-			if !found {
-				indices = []int{idx}
-			} else {
-				indices = append(indices,idx)
-			}
-			(*hashes_map)[hash_val] = indices
+			(*hash_list)[idx] = calcHashTraversal(&(*tree_list)[idx])
 		}
 	} else {
 		var wg sync.WaitGroup
@@ -538,6 +543,15 @@ func calcHashesWorkerEqual(tree_list *[]TreeNode, hash_list *[]int, idx int, wg 
 		(*hash_list)[idx] = calcHashTraversal(&(*tree_list)[idx])
 	}
 }
+
+func calcHashesWorkerIterate(tree_list *[]TreeNode, hash_list *[]int, idx int, num_workers int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for idx < len(*tree_list) {
+		(*hash_list)[idx] = calcHashTraversal(&(*tree_list)[idx])
+		idx += num_workers
+	}
+}
+
 func calcHashesWorkerLock(tree_list *[]TreeNode, hashes_map *map[int][]int, num_workers int, idx int, wg *sync.WaitGroup, lock *sync.Mutex) {
 	defer wg.Done()
 	for idx < len(*tree_list) {

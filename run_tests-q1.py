@@ -17,7 +17,7 @@ from statistics import mean
 NUM_SAMPLES = 10
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse.txt", "fine.txt"]
+inps = ["coarse,txt", "fine.txt"]
 lengths = [100, 100000]
 iteration_max = 25
 csvs = []
@@ -28,13 +28,75 @@ for idx, inp in enumerate(inps):
         step = 1
     else:
         step = lengths[idx] // iteration_max
-    hash_workers = [1, 2, 4, 8, 16, lengths[idx]]
+    if idx == 0:
+        hash_workers = [
+            2,
+            4,
+            8,
+            12,
+            16,
+            20,
+            24,
+            28,
+            32,
+            36,
+            40,
+            44,
+            48,
+            52,
+            56,
+            60,
+            64,
+            68,
+            72,
+            76,
+            80,
+            84,
+            88,
+            92,
+            96,
+            100,
+            1,
+        ]
+    else:
+        hash_workers = [
+            2,
+            4,
+            8,
+            16,
+            100000,
+            4000,
+            8000,
+            12000,
+            16000,
+            20000,
+            24000,
+            28000,
+            32000,
+            36000,
+            40000,
+            44000,
+            48000,
+            52000,
+            56000,
+            60000,
+            64000,
+            68000,
+            72000,
+            76000,
+            80000,
+            84000,
+            88000,
+            92000,
+            96000,
+            1,
+        ]
     # if step > 1:
     #    hash_workers.append(1)
     # hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:
-        cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw}"
+        cmd = f"go run src/BST.go -filename=input/{inp} -equal-workers=true -hash-workers={hw}"
         for i in range(NUM_SAMPLES):
             out = check_output(cmd, shell=True).decode("ascii")
             # print(f"output: {out}")
@@ -47,7 +109,7 @@ for idx, inp in enumerate(inps):
                 else:
                     times[hw].append(time)
         avg_time = mean(times[hw])
-        print(f"average runtime for {hw} hash-workers: {avg_time:.4e}")
+        print(f"{avg_time:.4e}")
 
 """
 for thr in THREADS:
