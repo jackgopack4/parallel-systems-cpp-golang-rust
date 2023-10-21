@@ -5,7 +5,11 @@ Lab1/valgrind-out.txt
 Lab1/results/
 Lab2/bin/
 Lab2/*.o
-bin/
+Lab3/bin/
 .DS_Store
-~$simple-hashTimes.xlsx
-~$b3-Report-PetersonJ.docx
+Lab3/.DS_Store
+Lab2/.DS_Store
+Lab1/.DS_Store
+temp/.DS_Store
+Lab3/~$simple-hashTimes.xlsx
+Lab3/~$b3-Report-PetersonJ.docx
