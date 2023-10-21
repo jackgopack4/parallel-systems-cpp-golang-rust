@@ -14,11 +14,11 @@ from statistics import mean
 #  Feel free (a.k.a. you have to) to modify this to instrument your code
 #
 
-NUM_SAMPLES = 5
+NUM_SAMPLES = 10
 THREADS = [0, 8, 16]
 LOOPS = range(1, 801, 8)
-inps = ["coarse.txt","fine.txt"]
-lengths = [100,10000]
+inps = ["coarse.txt", "fine.txt"]
+lengths = [100, 100000]
 iteration_max = 25
 csvs = []
 for idx, inp in enumerate(inps):
@@ -34,7 +34,7 @@ for idx, inp in enumerate(inps):
     hash_workers.extend(range(step, lengths[idx] + 1, step))
 
     for hw in hash_workers:
-        cmd = f"./bin/BST -filename=input/{inp} -hash-workers={hw}"
+        cmd = f"go run src/BST.go -filename=input/{inp} -hash-workers={hw}"
         for i in range(NUM_SAMPLES):
             out = check_output(cmd, shell=True).decode("ascii")
             # print(f"output: {out}")
