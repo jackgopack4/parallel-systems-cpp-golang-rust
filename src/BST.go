@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 	"sync/atomic"
+	"time"
 )
 
 type hash_val_idx struct {
@@ -47,8 +47,7 @@ func NewBuffer(max_len int, num_remaining int) *Buffer {
 func Close(alive *[]int32, b *Buffer) {
 	max_len := b.max_len
 	for i:=0;i<max_len;i++ {
-		tmp := atomic.LoadInt32(&(*alive)[i])
-		if tmp == 1 {
+		if atomic.LoadInt32(&(*alive)[i]) == 1 {
 			b.notEmpty.Broadcast()
 			b.notFull.Broadcast()
 		}
