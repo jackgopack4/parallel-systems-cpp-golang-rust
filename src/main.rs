@@ -81,8 +81,14 @@ fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMess
 ///
 fn run(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     let coord_log_path = format!("{}//{}", opts.log_path, "coordinator.log");
-
+    
     // TODO
+    println!("running, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
+                opts.send_success_probability,
+                opts.operation_success_probability,
+                opts.num_clients,
+                opts.num_requests,
+                opts.num_participants);
 }
 
 ///
