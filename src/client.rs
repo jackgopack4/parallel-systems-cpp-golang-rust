@@ -26,6 +26,7 @@ pub struct Client {
     pub id_str: String,
     pub running: Arc<AtomicBool>,
     pub num_requests: u32,
+    pub server_name: String,
 }
 
 ///
@@ -50,28 +51,26 @@ impl Client {
     ///       the protocol is still running to this constructor
     ///
     pub fn new(id_str: String,
-               running: Arc<AtomicBool>) -> Client {
+               running: &Arc<AtomicBool>,
+               server_name: &String) -> Client {
         Client {
             id_str: id_str,
-            running: running,
+            running: running.clone(),
             num_requests: 0,
             // TODO
-            
+            server_name: server_name.clone(),
         }
     }
 
     ///
     /// wait_for_exit_signal(&mut self)
-    /// Wait until the running flag is set by the CTRL-C handler
+    /// Wait until the running flag is set false by the CTRL-C handler
     ///
     pub fn wait_for_exit_signal(&mut self) {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
-        loop {
-            if !self.running.load(Ordering::SeqCst) {
-                break;
-            }
+        while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
         }
 

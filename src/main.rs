@@ -22,6 +22,8 @@ pub mod checker;
 pub mod tpcoptions;
 use message::ProtocolMessage;
 
+use crate::tpcoptions::TPCOptions;
+
 ///
 /// pub fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions) -> (std::process::Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)
 ///
@@ -39,10 +41,10 @@ fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions) -> (Child, S
         .args(child_opts.as_vec())
         .spawn()
         .expect("Failed to execute child process");
-
     let (tx, rx) = channel().unwrap();
     // TODO
-
+    //let tx0 = Sender::connect(child_opts.ipc_path.clone()).unwrap();
+    //tx0.send(tx).unwrap();
     (child, tx, rx)
 }
 
@@ -58,11 +60,14 @@ fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions) -> (Child, S
 /// HINT: You can change the signature of the function if necessasry
 ///
 fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMessage>, Receiver<ProtocolMessage>) {
-    let (tx, rx) = channel().unwrap();
-
+    let (tx_to_parent, rx_from_child) = channel().unwrap();
+    let (tx_to_child, rx_from_parent) = channel().unwrap();
+    let server_name = opts.ipc_path.clone();
+    let tx0: Sender<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)> = Sender::connect(server_name).unwrap();
     // TODO
-
-    (tx, rx)
+    tx0.send((tx_to_child,rx_from_child)).unwrap();
+    
+    (tx_to_parent, rx_from_parent)
 }
 
 ///
@@ -79,7 +84,7 @@ fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMess
 /// 4. Starts the coordinator protocol
 /// 5. Wait until the children finish execution
 ///
-fn run(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
+fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     let coord_log_path = format!("{}//{}", opts.log_path, "coordinator.log");
     // TODO
     println!("running, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
@@ -89,10 +94,35 @@ fn run(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_requests,
                 opts.num_participants);
     // starting with one client and one participant, one request each
+    //opts.ipc_path = server_name.clone();
+
+    let (_, server_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
     let mut coord: coordinator::Coordinator = coordinator::Coordinator::new(
-                format!("{}//coordinator.log",opts.log_path),
+                coord_log_path,
                 &running,
-                opts);
+                opts,
+                &server_name,
+            );
+    for i in 0..opts.num_clients {
+
+        let (server, server_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
+        let mut client_opts =  TPCOptions{
+            send_success_probability: opts.send_success_probability.clone(),
+            operation_success_probability: opts.operation_success_probability.clone(),
+            num_clients: opts.num_clients.clone(),
+            num_participants: opts.num_participants.clone(),
+            num_requests: opts.num_requests.clone(),
+            verbosity: opts.verbosity.clone(),
+            mode: "client".to_string(),
+            log_path: opts.log_path.clone(),
+            ipc_path: server_name.clone(),
+            num: i,
+        };
+
+        spawn_child_and_connect(&mut client_opts);
+        let (_,(tx_to_child,tx_from_child)) = server.accept().unwrap();
+    }
+
     coord.protocol();
 
 }
@@ -107,8 +137,23 @@ fn run(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 /// 2. Constructs a new client
 /// 3. Starts the client protocol
 ///
-fn run_client(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
+fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     // TODO
+    println!("running client, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
+                opts.send_success_probability,
+                opts.operation_success_probability,
+                opts.num_clients,
+                opts.num_requests,
+                opts.num_participants);
+    let client_id_str = format!("client_{}", opts.num);
+    let mut client: client::Client = client::Client::new(
+        client_id_str,
+        &running,
+        &opts.ipc_path,
+    );
+    client.protocol(0);
+    let (tx,rx) = connect_to_coordinator(opts);            
+
 }
 
 ///

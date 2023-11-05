@@ -60,7 +60,7 @@ pub struct Coordinator {
     successful_ops: u64,
     failed_ops: u64,
     unknown_ops: u64,
-
+    server_name: String,
 }
 
 ///
@@ -86,7 +86,8 @@ impl Coordinator {
     pub fn new(
         log_path: String,
         r: &Arc<AtomicBool>,
-        opts: &tpcoptions::TPCOptions) -> Coordinator {
+        opts: &tpcoptions::TPCOptions,
+        server_name: &String) -> Coordinator {
 
         Coordinator {
             state: CoordinatorState::Quiescent,
@@ -101,6 +102,7 @@ impl Coordinator {
             successful_ops: 0,
             failed_ops: 0,
             unknown_ops: 0,
+            server_name: server_name.clone(),
         }
     }
 
@@ -167,10 +169,7 @@ impl Coordinator {
     pub fn protocol(&mut self) {
 
         // TODO
-        loop {
-            if !self.running.load(Ordering::SeqCst) {
-                break;
-            }
+        while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
         }
         self.report_status();
