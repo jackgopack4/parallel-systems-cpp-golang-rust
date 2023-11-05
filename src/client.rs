@@ -56,6 +56,7 @@ impl Client {
             running: running,
             num_requests: 0,
             // TODO
+            
         }
     }
 
@@ -67,6 +68,12 @@ impl Client {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
+        loop {
+            if !self.running.load(Ordering::SeqCst) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
 
         trace!("{}::Exiting", self.id_str.clone());
     }
