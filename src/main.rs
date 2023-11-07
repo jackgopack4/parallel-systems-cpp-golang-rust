@@ -36,16 +36,19 @@ use crate::tpcoptions::TPCOptions;
 ///
 /// HINT: You can change the signature of the function if necessary
 ///
-fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions) -> (Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>) {
+fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions, server:IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>) -> (Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>) {
     let child = Command::new(env::current_exe().unwrap())
         .args(child_opts.as_vec())
         .spawn()
         .expect("Failed to execute child process");
-    let (tx, rx) = channel().unwrap();
+    println!("{}",format!("spawned child pid: {}, id: {}",child.id(),child_opts.num));
+    let (_,(tx_to_child,rx_from_child)) = server.accept().unwrap();
+    //let (tx, rx) = channel().unwrap();
     // TODO
     //let tx0 = Sender::connect(child_opts.ipc_path.clone()).unwrap();
     //tx0.send(tx).unwrap();
-    (child, tx, rx)
+    println!("received tx,rx for child id: {}",child_opts.num);
+    (child, tx_to_child, rx_from_child)
 }
 
 ///
@@ -63,10 +66,12 @@ fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMess
     let (tx_to_parent, rx_from_child) = channel().unwrap();
     let (tx_to_child, rx_from_parent) = channel().unwrap();
     let server_name = opts.ipc_path.clone();
+    println!("{}",format!("connecting to coordinator, id: {}",opts.num));
     let tx0: Sender<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)> = Sender::connect(server_name).unwrap();
+    println!("{}",format!("created server tx channel, id: {}",opts.num));
     // TODO
     tx0.send((tx_to_child,rx_from_child)).unwrap();
-    
+    println!("{}",format!("sent child tx/rx channels, id: {}",opts.num));
     (tx_to_parent, rx_from_parent)
 }
 
@@ -103,8 +108,19 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts,
                 &server_name,
             );
+    //let mut server_vec = vec![];
+    //let mut name_vec = vec![];
+    // client_vec is tuple of (child,sender,receiver)
+    let mut client_vec = vec![];
+    /* 
+    for _ in 0..opts.num_clients {
+        let (tmp_server, tmp_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
+        server_vec.push(tmp_server);
+        name_vec.push(tmp_name);
+    }
+    */
     for i in 0..opts.num_clients {
-
+        //let vec_index:usize = i as usize;
         let (server, server_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
         let mut client_opts =  TPCOptions{
             send_success_probability: opts.send_success_probability.clone(),
@@ -119,8 +135,8 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
             num: i,
         };
 
-        spawn_child_and_connect(&mut client_opts);
-        let (_,(tx_to_child,tx_from_child)) = server.accept().unwrap();
+        client_vec.push(spawn_child_and_connect(&mut client_opts,server));
+        //let (_,(tx_to_child,tx_from_child)) = server.accept().unwrap();
     }
 
     coord.protocol();
@@ -151,9 +167,8 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
         &running,
         &opts.ipc_path,
     );
-    client.protocol(0);
-    let (tx,rx) = connect_to_coordinator(opts);            
-
+    let (tx,rx) = connect_to_coordinator(opts); 
+    client.protocol(0);           
 }
 
 ///

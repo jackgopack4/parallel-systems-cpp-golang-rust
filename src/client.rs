@@ -134,6 +134,7 @@ impl Client {
     pub fn protocol(&mut self, n_requests: u32) {
 
         // TODO
+        println!("{}",format!("running client protocol child id {}",self.id_str));
         self.wait_for_exit_signal();
         self.report_status();
     }

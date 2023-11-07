@@ -167,7 +167,7 @@ impl Coordinator {
     /// HINT: Wait for some kind of exit signal before returning from the protocol!
     ///
     pub fn protocol(&mut self) {
-
+        println!("{}","running coord protocol");
         // TODO
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
