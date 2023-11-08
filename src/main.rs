@@ -22,6 +22,7 @@ pub mod checker;
 pub mod tpcoptions;
 use message::ProtocolMessage;
 
+use crate::coordinator::Child_Data;
 use crate::tpcoptions::TPCOptions;
 
 ///
@@ -111,8 +112,9 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     //let mut server_vec = vec![];
     //let mut name_vec = vec![];
     // client_vec is tuple of (child,sender,receiver)
-    let mut client_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
-    let mut participant_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
+    //let mut client_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
+    //let mut participant_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
+    let mut participant_child_vec: Vec<Child_Data> = vec![];
     /* 
     for _ in 0..opts.num_clients {
         let (tmp_server, tmp_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
@@ -135,8 +137,10 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
             ipc_path: server_name.clone(),
             num: i,
         };
-
-        client_vec.push(spawn_child_and_connect(&mut client_opts,server));
+        let (_temp_client, temp_tx, temp_rx) = spawn_child_and_connect(&mut client_opts,server);
+        let temp_name: String = format!("client_{}",i);
+        coord.client_join(&temp_name, temp_tx, temp_rx);
+        //client_vec.push(spawn_child_and_connect(&mut client_opts,server));
         //let (_,(tx_to_child,tx_from_child)) = server.accept().unwrap();
     }
 
@@ -154,8 +158,18 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
             ipc_path: server_name.clone(),
             num: i,
         };
-
-        participant_vec.push(spawn_child_and_connect(&mut participant_opts, server));
+        let (_temp_participant, temp_tx, temp_rx) = spawn_child_and_connect(&mut participant_opts,server);
+        let temp_name: String = format!("participant_{}",i);
+        /* 
+        participant_child_vec.push(Child_Data{
+            tx_channel:temp_tx,
+            rx_channel:temp_rx,
+            name:format!("participant_{}",i),
+            num_actions:0,
+        });
+        */
+        coord.participant_join(&temp_name,temp_tx,temp_rx);
+        //participant_vec.push(spawn_child_and_connect(&mut participant_opts, server));
     }
 
     coord.protocol();
@@ -181,7 +195,7 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_clients,
                 opts.num_requests,
                 opts.num_participants);
-    let client_id_str = format!("client_{}", opts.num);
+    let client_id_str: String = format!("client_{}", opts.num);
     let mut client: client::Client = client::Client::new(
         client_id_str,
         &running,
@@ -202,8 +216,8 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 /// 3. Starts the participant protocol
 ///
 fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
-    let participant_id_str = format!("participant_{}", opts.num);
-    let participant_log_path = format!("{}//{}.log", opts.log_path, participant_id_str);
+    let participant_id_str: String = format!("participant_{}", opts.num);
+    let participant_log_path: String = format!("{}//{}.log", opts.log_path, participant_id_str);
     println!("running participant {}, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
                 opts.num,
                 opts.send_success_probability,
@@ -227,7 +241,7 @@ fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 
 fn main() {
     // Parse CLI arguments
-    let opts = tpcoptions::TPCOptions::new();
+    let opts: TPCOptions = tpcoptions::TPCOptions::new();
     // Set-up logging and create OpLog path if necessary
     stderrlog::new()
             .module(module_path!())
@@ -242,9 +256,9 @@ fn main() {
     }
 
     // Set-up Ctrl-C / SIGINT handler
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
-    let m = opts.mode.clone();
+    let running: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+    let r: Arc<AtomicBool> = running.clone();
+    let m: String = opts.mode.clone();
     ctrlc::set_handler(move || {
         r.store(false, Ordering::SeqCst);
         if m == "run" {

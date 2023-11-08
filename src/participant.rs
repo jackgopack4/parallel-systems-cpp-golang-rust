@@ -50,6 +50,9 @@ pub struct Participant {
     operation_success_prob: f64,
     server_name: String,
     num_requests: u32,
+    failed_ops: u64,
+    successful_ops: u64,
+    unknown_ops: u64,
 }
 
 ///
@@ -92,7 +95,10 @@ impl Participant {
             operation_success_prob: operation_success_prob,
             // TODO
             server_name: server_name,
-            num_requests: num_requests
+            num_requests: num_requests,
+            successful_ops: 0,
+            failed_ops: 0,
+            unknown_ops: 0,
         }
     }
 
@@ -145,11 +151,11 @@ impl Participant {
     ///
     pub fn report_status(&mut self) {
         // TODO: Collect actual stats
-        let successful_ops: u64 = 0;
-        let failed_ops: u64 = 0;
-        let unknown_ops: u64 = 0;
+        //let successful_ops: u64 = 0;
+        //let failed_ops: u64 = 0;
+        //let unknown_ops: u64 = 0;
 
-        println!("{:16}:\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", self.id_str.clone(), successful_ops, failed_ops, unknown_ops);
+        println!("{:16}:\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", self.id_str.clone(), self.successful_ops, self.failed_ops, self.unknown_ops);
     }
 
     ///

@@ -6,6 +6,7 @@ extern crate log;
 extern crate stderrlog;
 extern crate rand;
 extern crate ipc_channel;
+extern crate queues;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,6 +19,7 @@ use coordinator::ipc_channel::ipc::IpcSender as Sender;
 use coordinator::ipc_channel::ipc::IpcReceiver as Receiver;
 use coordinator::ipc_channel::ipc::TryRecvError;
 use coordinator::ipc_channel::ipc::channel;
+use coordinator::queues::*;
 
 use message;
 use message::MessageType;
@@ -25,6 +27,7 @@ use message::ProtocolMessage;
 use message::RequestStatus;
 use oplog;
 use tpcoptions;
+//use queues::*;
 
 /// CoordinatorState
 /// States for 2PC state machine
@@ -39,10 +42,10 @@ pub enum CoordinatorState {
 }
 #[derive(Debug)]
 pub struct Child_Data {
-    tx_channel: Sender<ProtocolMessage>,
-    rx_channel: Receiver<ProtocolMessage>,
-    name: String,
-    num_actions: u32,
+    pub tx_channel: Sender<ProtocolMessage>,
+    pub rx_channel: Receiver<ProtocolMessage>,
+    pub name: String,
+    pub num_actions: u32,
 }
 
 /// Coordinator
@@ -55,6 +58,7 @@ pub struct Coordinator {
     num_clients: u32,
     num_requests: u32,
     num_participants: u32,
+    total_requests: u64,
     clients: Vec<Child_Data>,
     participants: Vec<Child_Data>,
     successful_ops: u64,
@@ -88,7 +92,7 @@ impl Coordinator {
         r: &Arc<AtomicBool>,
         opts: &tpcoptions::TPCOptions,
         server_name: &String) -> Coordinator {
-
+        let total_num:u64 = (opts.num_clients*opts.num_requests) as u64;
         Coordinator {
             state: CoordinatorState::Quiescent,
             log: oplog::OpLog::new(log_path),
@@ -97,6 +101,7 @@ impl Coordinator {
             num_clients: opts.num_clients,
             num_requests: opts.num_requests,
             num_participants: opts.num_participants,
+            total_requests: total_num,
             clients: vec![],
             participants: vec![],
             successful_ops: 0,
@@ -157,7 +162,8 @@ impl Coordinator {
         //let failed_ops: u64 = 0;
         //let unknown_ops: u64 = 0;
 
-        println!("coordinator     :\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", self.successful_ops, self.failed_ops, self.unknown_ops);
+        println!("coordinator     :\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", 
+                    self.successful_ops, self.failed_ops, self.unknown_ops);
     }
 
     ///
@@ -169,6 +175,112 @@ impl Coordinator {
     pub fn protocol(&mut self) {
         println!("{}","running coord protocol");
         // TODO
+        let mut client_q: Queue<ProtocolMessage> = queue![];
+        let mut cur_rqst: ProtocolMessage = ProtocolMessage{
+                mtype: MessageType::ClientRequest,
+                uid: 0,
+                txid:format!("0"),
+                senderid: format!("0"),
+                opid: 0,
+        };
+        while (self.successful_ops+self.failed_ops < self.total_requests) && self.running.load(Ordering::SeqCst) {
+            match self.state {
+                CoordinatorState::Quiescent => { 
+                    while client_q.size() == 0 {
+                        let mut idx: usize = 0;
+                        while idx < self.num_clients as usize {
+                            match self.clients[idx].rx_channel.try_recv() {
+                                Ok(res) => {
+                                    // Do something interesting with your result
+                                    println!("Received data...");
+                                    client_q.add(res);
+                                    break;
+                                },
+                                Err(_) => {
+                                    // Do something else useful while we wait
+                                    println!("Incrementing counter to check next client for traffic");
+                                    idx += 1;
+                                }
+                            }
+                        }
+                        
+                    }
+                    cur_rqst = client_q.remove().unwrap();
+                    cur_rqst = ProtocolMessage::generate(
+                            MessageType::CoordinatorPropose, 
+                            cur_rqst.txid.clone(), 
+                            cur_rqst.senderid.clone(), 
+                            cur_rqst.opid.clone());
+                    self.state = CoordinatorState::ReceivedRequest;
+                },
+                CoordinatorState::ReceivedRequest => {
+                    for i in 0..self.num_participants {
+                        let participant_index: usize = i as usize;
+                        let mut child_data: &Child_Data = &self.participants[participant_index];
+                        child_data.tx_channel.send(cur_rqst.clone()).unwrap();
+                    }
+                    self.state = CoordinatorState::ProposalSent;
+                },
+                CoordinatorState::ProposalSent => {
+                    let mut count_received: u32 = 0;
+                    let mut count_succeed: u32 = 0;
+                    let mut count_fail: u32 = 0;
+                    while count_received < self.num_participants {
+                        for i in 0..self.num_participants {
+                            let participant_index: usize = i as usize;
+                            match self.clients[participant_index].rx_channel.try_recv() {
+                                Ok(res) => {
+                                    // Do something interesting with your result
+                                    println!("Received data...");
+                                    if res.mtype == MessageType::ParticipantVoteAbort {
+                                        count_fail += 1;
+                                    } else {
+                                        count_succeed += 1;
+                                    }
+                                    count_received += 1;
+                                    //client_q.add(res);
+                                    break;
+                                },
+                                Err(_) => {
+                                    // Do something else useful while we wait
+                                    println!("no message yet, moving to next participant");
+                                }
+                            }
+                        }
+                    }
+                    if count_fail > 0 {
+                        self.state = CoordinatorState::ReceivedVotesAbort;
+                    } else {
+                        self.state = CoordinatorState::ReceivedVotesCommit;
+                    }
+                },
+                CoordinatorState::ReceivedVotesAbort => {
+                    for i in 0..self.num_participants {
+                        let participant_index: usize = i as usize;
+                        let tmp_abort_msg = ProtocolMessage::generate(
+                            MessageType::CoordinatorAbort, 
+                            cur_rqst.txid.clone(), 
+                            cur_rqst.senderid.clone(), 
+                            cur_rqst.opid.clone());
+                        self.clients[participant_index].tx_channel.send(tmp_abort_msg).unwrap();
+                    }
+                },
+                CoordinatorState::ReceivedVotesCommit => {
+                    for i in 0..self.num_participants {
+                        let participant_index: usize = i as usize;
+                        let tmp_abort_msg = ProtocolMessage::generate(
+                            MessageType::CoordinatorCommit, 
+                            cur_rqst.txid.clone(), 
+                            cur_rqst.senderid.clone(), 
+                            cur_rqst.opid.clone());
+                        self.clients[participant_index].tx_channel.send(tmp_abort_msg).unwrap();
+                    }
+                },
+                CoordinatorState::SentGlobalDecision => {
+
+                },
+            }
+        }
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
         }
