@@ -48,6 +48,8 @@ pub struct Participant {
     running: Arc<AtomicBool>,
     send_success_prob: f64,
     operation_success_prob: f64,
+    server_name: String,
+    num_requests: u32,
 }
 
 ///
@@ -75,18 +77,22 @@ impl Participant {
     pub fn new(
         id_str: String,
         log_path: String,
-        r: Arc<AtomicBool>,
+        r: &Arc<AtomicBool>,
         send_success_prob: f64,
-        operation_success_prob: f64) -> Participant {
+        operation_success_prob: f64,
+        server_name: String,
+        num_requests: u32) -> Participant {
 
         Participant {
             id_str: id_str,
             state: ParticipantState::Quiescent,
             log: oplog::OpLog::new(log_path),
-            running: r,
+            running: r.clone(),
             send_success_prob: send_success_prob,
             operation_success_prob: operation_success_prob,
             // TODO
+            server_name: server_name,
+            num_requests: num_requests
         }
     }
 
@@ -154,7 +160,10 @@ impl Participant {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
-
+        while self.running.load(Ordering::SeqCst) {
+            thread::sleep(Duration::from_millis(100));
+        }
+        
         trace!("{}::Exiting", self.id_str.clone());
     }
 

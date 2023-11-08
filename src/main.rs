@@ -111,7 +111,8 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     //let mut server_vec = vec![];
     //let mut name_vec = vec![];
     // client_vec is tuple of (child,sender,receiver)
-    let mut client_vec = vec![];
+    let mut client_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
+    let mut participant_vec: Vec<(Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>)> = vec![];
     /* 
     for _ in 0..opts.num_clients {
         let (tmp_server, tmp_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
@@ -122,7 +123,7 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     for i in 0..opts.num_clients {
         //let vec_index:usize = i as usize;
         let (server, server_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
-        let mut client_opts =  TPCOptions{
+        let mut client_opts: TPCOptions =  TPCOptions{
             send_success_probability: opts.send_success_probability.clone(),
             operation_success_probability: opts.operation_success_probability.clone(),
             num_clients: opts.num_clients.clone(),
@@ -137,6 +138,24 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 
         client_vec.push(spawn_child_and_connect(&mut client_opts,server));
         //let (_,(tx_to_child,tx_from_child)) = server.accept().unwrap();
+    }
+
+    for i in 0..opts.num_participants {
+        let (server,server_name) = IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>::new().unwrap();
+        let mut participant_opts: TPCOptions =  TPCOptions{
+            send_success_probability: opts.send_success_probability.clone(),
+            operation_success_probability: opts.operation_success_probability.clone(),
+            num_clients: opts.num_clients.clone(),
+            num_participants: opts.num_participants.clone(),
+            num_requests: opts.num_requests.clone(),
+            verbosity: opts.verbosity.clone(),
+            mode: "participant".to_string(),
+            log_path: opts.log_path.clone(),
+            ipc_path: server_name.clone(),
+            num: i,
+        };
+
+        participant_vec.push(spawn_child_and_connect(&mut participant_opts, server));
     }
 
     coord.protocol();
@@ -155,7 +174,8 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 ///
 fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     // TODO
-    println!("running client, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
+    println!("running client {}, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
+                opts.num,
                 opts.send_success_probability,
                 opts.operation_success_probability,
                 opts.num_clients,
@@ -184,8 +204,25 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     let participant_id_str = format!("participant_{}", opts.num);
     let participant_log_path = format!("{}//{}.log", opts.log_path, participant_id_str);
-
+    println!("running participant {}, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
+                opts.num,
+                opts.send_success_probability,
+                opts.operation_success_probability,
+                opts.num_clients,
+                opts.num_requests,
+                opts.num_participants);
     // TODO
+    let mut participant: participant::Participant = participant::Participant::new(
+        participant_id_str,
+        participant_log_path,
+        &running,
+        opts.send_success_probability.clone(),
+        opts.operation_success_probability.clone(),
+        opts.ipc_path.clone(),
+        opts.num_requests.clone()
+    );
+    let (tx,rx) = connect_to_coordinator(opts); 
+    participant.protocol();
 }
 
 fn main() {
