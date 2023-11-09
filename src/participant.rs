@@ -53,6 +53,8 @@ pub struct Participant {
     failed_ops: u64,
     successful_ops: u64,
     unknown_ops: u64,
+    tx_channel: Sender<ProtocolMessage>,
+    rx_channel: Receiver<ProtocolMessage>,
 }
 
 ///
@@ -84,7 +86,9 @@ impl Participant {
         send_success_prob: f64,
         operation_success_prob: f64,
         server_name: String,
-        num_requests: u32) -> Participant {
+        num_requests: u32,
+        tx: Sender<ProtocolMessage>,
+        rx: Receiver<ProtocolMessage>) -> Participant {
 
         Participant {
             id_str: id_str,
@@ -99,6 +103,8 @@ impl Participant {
             successful_ops: 0,
             failed_ops: 0,
             unknown_ops: 0,
+            tx_channel: tx,
+            rx_channel: rx,
         }
     }
 
@@ -112,6 +118,8 @@ impl Participant {
     ///
     pub fn send(&mut self, pm: ProtocolMessage) {
         let x: f64 = random();
+        // FOR NOW ALWAYS SEND TO MAKE SURE STUFF FINISHES
+        self.tx_channel.send(pm).unwrap();
         if x <= self.send_success_prob {
             // TODO: Send success
         } else {
@@ -135,10 +143,32 @@ impl Participant {
 
         trace!("{}::Performing operation", self.id_str.clone());
         let x: f64 = random();
-        if x <= self.operation_success_prob {
-            // TODO: Successful operation
-        } else {
-            // TODO: Failed operation
+        if request_option.is_some() {
+            self.unknown_ops += 1;
+            let pm: ProtocolMessage = request_option.as_ref().unwrap().clone();
+            if x <= self.operation_success_prob {
+                // TODO: Successful operation
+                let success_pm = ProtocolMessage::generate(
+                    MessageType::ParticipantVoteCommit, 
+                    pm.txid.clone(), 
+                    pm.senderid.clone(),
+                    pm.opid.clone());
+                    self.send(success_pm);
+                self.unknown_ops -= 1;
+                self.successful_ops += 1;
+                return true
+            } else {
+                // TODO: Failed operation
+                let fail_pm = ProtocolMessage::generate(
+                    MessageType::ParticipantVoteAbort, 
+                    pm.txid.clone(), 
+                    pm.senderid.clone(),
+                    pm.opid.clone());
+                    self.send(fail_pm);
+                self.unknown_ops -= 1;
+                self.failed_ops += 1;
+                return false
+            }
         }
 
         true
@@ -183,6 +213,13 @@ impl Participant {
         trace!("{}::Beginning protocol", self.id_str.clone());
 
         // TODO
+        while self.failed_ops+self.successful_ops < self.num_requests as u64 && self.running.load(Ordering::SeqCst) {
+            let request_option = self.rx_channel.recv().unwrap();
+            if !self.running.load(Ordering::SeqCst) {
+                break;
+            }
+            self.perform_operation(&Some(request_option));
+        }
 
         self.wait_for_exit_signal();
         self.report_status();

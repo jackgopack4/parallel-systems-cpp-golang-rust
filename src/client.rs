@@ -20,6 +20,8 @@ use message;
 use message::MessageType;
 use message::RequestStatus;
 
+use crate::message::ProtocolMessage;
+
 // Client state and primitives for communicating with the coordinator
 #[derive(Debug)]
 pub struct Client {
@@ -27,6 +29,11 @@ pub struct Client {
     pub running: Arc<AtomicBool>,
     pub num_requests: u32,
     pub server_name: String,
+    pub tx_channel: Sender<ProtocolMessage>,
+    pub rx_channel: Receiver<ProtocolMessage>,
+    pub successful_ops: u32,
+    pub failed_ops: u32,
+    pub unknown_ops: u32,
 }
 
 ///
@@ -52,13 +59,21 @@ impl Client {
     ///
     pub fn new(id_str: String,
                running: &Arc<AtomicBool>,
-               server_name: &String) -> Client {
+               num_requests: u32,
+               server_name: &String,
+               tx: Sender<ProtocolMessage>,
+               rx: Receiver<ProtocolMessage>) -> Client {
         Client {
             id_str: id_str,
             running: running.clone(),
-            num_requests: 0,
+            num_requests: num_requests,
             // TODO
             server_name: server_name.clone(),
+            tx_channel: tx,
+            rx_channel: rx,
+            successful_ops: 0,
+            failed_ops: 0,
+            unknown_ops: 0,
         }
     }
 
@@ -93,7 +108,8 @@ impl Client {
         info!("{}::Sending operation #{}", self.id_str.clone(), self.num_requests);
 
         // TODO
-
+        self.tx_channel.send(pm).unwrap();
+        self.unknown_ops += 1;
         trace!("{}::Sent operation #{}", self.id_str.clone(), self.num_requests);
     }
 
@@ -108,6 +124,13 @@ impl Client {
         info!("{}::Receiving Coordinator Result", self.id_str.clone());
 
         // TODO
+        let rx_msg = self.rx_channel.recv().unwrap();
+        self.unknown_ops -= 1;
+        if rx_msg.mtype == MessageType::CoordinatorAbort {
+            self.failed_ops += 1;
+        } else if rx_msg.mtype == MessageType::CoordinatorCommit {
+            self.successful_ops += 1;
+        }
     }
 
     ///
@@ -117,11 +140,12 @@ impl Client {
     ///
     pub fn report_status(&mut self) {
         // TODO: Collect actual stats
+        /* 
         let successful_ops: u64 = 0;
         let failed_ops: u64 = 0;
         let unknown_ops: u64 = 0;
-
-        println!("{:16}:\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", self.id_str.clone(), successful_ops, failed_ops, unknown_ops);
+        */
+        println!("{:16}:\tCommitted: {:6}\tAborted: {:6}\tUnknown: {:6}", self.id_str.clone(), self.successful_ops, self.failed_ops, self.unknown_ops);
     }
 
     ///
@@ -135,6 +159,13 @@ impl Client {
 
         // TODO
         println!("{}",format!("running client protocol child id {}",self.id_str));
+        while self.failed_ops+self.successful_ops < self.num_requests && self.running.load(Ordering::SeqCst) {
+            self.send_next_operation();
+            if !self.running.load(Ordering::SeqCst) {
+                break;
+            }
+            self.recv_result();
+        }
         self.wait_for_exit_signal();
         self.report_status();
     }

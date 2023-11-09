@@ -196,12 +196,15 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_requests,
                 opts.num_participants);
     let client_id_str: String = format!("client_{}", opts.num);
+    let (tx,rx) = connect_to_coordinator(opts); 
     let mut client: client::Client = client::Client::new(
         client_id_str,
         &running,
+        opts.num_requests.clone(),
         &opts.ipc_path,
+        tx,
+        rx
     );
-    let (tx,rx) = connect_to_coordinator(opts); 
     client.protocol(0);           
 }
 
@@ -226,6 +229,8 @@ fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_requests,
                 opts.num_participants);
     // TODO
+    let (tx,rx) = connect_to_coordinator(opts); 
+
     let mut participant: participant::Participant = participant::Participant::new(
         participant_id_str,
         participant_log_path,
@@ -233,9 +238,10 @@ fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
         opts.send_success_probability.clone(),
         opts.operation_success_probability.clone(),
         opts.ipc_path.clone(),
-        opts.num_requests.clone()
+        opts.num_requests.clone(),
+        tx,
+        rx
     );
-    let (tx,rx) = connect_to_coordinator(opts); 
     participant.protocol();
 }
 

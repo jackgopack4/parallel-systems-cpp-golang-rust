@@ -206,18 +206,18 @@ impl Coordinator {
                         
                     }
                     cur_rqst = client_q.remove().unwrap();
-                    cur_rqst = ProtocolMessage::generate(
+                    self.unknown_ops += 1;
+                    self.state = CoordinatorState::ReceivedRequest;
+                },
+                CoordinatorState::ReceivedRequest => {
+                    for i in 0..self.num_participants as usize {
+                        //let mut child_data: &Child_Data = &self.participants[i];
+                        cur_rqst = ProtocolMessage::generate(
                             MessageType::CoordinatorPropose, 
                             cur_rqst.txid.clone(), 
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
-                    self.state = CoordinatorState::ReceivedRequest;
-                },
-                CoordinatorState::ReceivedRequest => {
-                    for i in 0..self.num_participants {
-                        let participant_index: usize = i as usize;
-                        let mut child_data: &Child_Data = &self.participants[participant_index];
-                        child_data.tx_channel.send(cur_rqst.clone()).unwrap();
+                        self.participants[i].tx_channel.send(cur_rqst.clone()).unwrap();
                     }
                     self.state = CoordinatorState::ProposalSent;
                 },
@@ -243,7 +243,8 @@ impl Coordinator {
                                 },
                                 Err(_) => {
                                     // Do something else useful while we wait
-                                    println!("no message yet, moving to next participant");
+                                    thread::sleep(Duration::from_millis(10));
+                                    //println!("no message yet, moving to next participant");
                                 }
                             }
                         }
@@ -255,29 +256,66 @@ impl Coordinator {
                     }
                 },
                 CoordinatorState::ReceivedVotesAbort => {
-                    for i in 0..self.num_participants {
-                        let participant_index: usize = i as usize;
-                        let tmp_abort_msg = ProtocolMessage::generate(
+                    let mut tmp_abort_msg = ProtocolMessage{
+                        mtype: MessageType::ClientRequest,
+                        uid: 0,
+                        txid:format!("0"),
+                        senderid: format!("0"),
+                        opid: 0,
+                    };
+                    for i in 0..self.num_participants as usize {
+                        tmp_abort_msg = ProtocolMessage::generate(
                             MessageType::CoordinatorAbort, 
                             cur_rqst.txid.clone(), 
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
-                        self.clients[participant_index].tx_channel.send(tmp_abort_msg).unwrap();
+                        self.participants[i].tx_channel.send(tmp_abort_msg.clone()).unwrap();
                     }
+                    for i in 0..self.num_clients as usize {
+                        if self.clients[i].name == cur_rqst.senderid {
+                            tmp_abort_msg = ProtocolMessage::generate(
+                                MessageType::CoordinatorAbort, 
+                                cur_rqst.txid.clone(), 
+                                cur_rqst.senderid.clone(), 
+                                cur_rqst.opid.clone());
+                            self.clients[i].tx_channel.send(tmp_abort_msg.clone()).unwrap();
+                        }
+                    }
+                    self.failed_ops += 1;
+                    self.state = CoordinatorState::SentGlobalDecision;
                 },
                 CoordinatorState::ReceivedVotesCommit => {
-                    for i in 0..self.num_participants {
-                        let participant_index: usize = i as usize;
-                        let tmp_abort_msg = ProtocolMessage::generate(
+                    let mut tmp_commit_msg = ProtocolMessage{
+                        mtype: MessageType::ClientRequest,
+                        uid: 0,
+                        txid:format!("0"),
+                        senderid: format!("0"),
+                        opid: 0,
+                    };
+                    for i in 0..self.num_participants as usize {
+                        tmp_commit_msg = ProtocolMessage::generate(
                             MessageType::CoordinatorCommit, 
                             cur_rqst.txid.clone(), 
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
-                        self.clients[participant_index].tx_channel.send(tmp_abort_msg).unwrap();
+                        self.participants[i].tx_channel.send(tmp_commit_msg.clone()).unwrap();
                     }
+                    for i in 0..self.num_clients as usize {
+                        if self.clients[i].name == cur_rqst.senderid {
+                            tmp_commit_msg = ProtocolMessage::generate(
+                                MessageType::CoordinatorCommit, 
+                                cur_rqst.txid.clone(), 
+                                cur_rqst.senderid.clone(), 
+                                cur_rqst.opid.clone());
+                            self.clients[i].tx_channel.send(tmp_commit_msg.clone()).unwrap();
+                        }
+                    }
+                    self.successful_ops += 1;
+                    self.state = CoordinatorState::SentGlobalDecision;
                 },
                 CoordinatorState::SentGlobalDecision => {
-
+                    self.unknown_ops -= 1;
+                    self.state = CoordinatorState::Quiescent;
                 },
             }
         }
