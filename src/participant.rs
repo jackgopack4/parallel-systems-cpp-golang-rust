@@ -157,6 +157,7 @@ impl Participant {
                     pm.senderid.clone(),
                     pm.opid.clone());
                 self.send(success_pm);
+                println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
                 self.unknown_ops -= 1;
                 self.successful_ops += 1;
                 return true
