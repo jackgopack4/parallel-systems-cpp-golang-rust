@@ -192,19 +192,19 @@ impl Coordinator {
                             match self.clients[idx].rx_channel.try_recv() {
                                 Ok(res) => {
                                     // Do something interesting with your result
-                                    //println!("Received data from client {}",idx);
+                                    println!("Received data from client {}",idx);
                                     client_q.add(res).unwrap();
                                     self.unknown_ops += 1;
                                     break;
                                 },
                                 Err(_) => {
                                     // Do something else useful while we wait
-                                    //println!("Incrementing counter to check next client for traffic");
+                                    println!("Incrementing counter to check next client for traffic");
                                     idx += 1;
                                 }
                             }
                         }
-                        //println!("coord broke out of rx loop");
+                        println!("coord broke out of rx loop");
                         
                     }
                     if !self.running.load(Ordering::SeqCst) {
@@ -226,10 +226,10 @@ impl Coordinator {
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
                         self.participants[i].tx_channel.send(tmp_rqst.clone()).unwrap();
-                        //println!("sent request to participant {}",i);
+                        println!("sent request to participant {}",i);
                     }
-                    //println!("sent request to all {} participants",self.num_participants);
-                    //println!("succesful: {}, failed: {}, total: {}",self.successful_ops,self.failed_ops,self.total_requests);
+                    println!("sent request to all {} participants",self.num_participants);
+                    println!("succesful: {}, failed: {}, total: {}",self.successful_ops,self.failed_ops,self.total_requests);
                     self.state = CoordinatorState::ProposalSent;
                 },
                 CoordinatorState::ProposalSent => {
@@ -238,19 +238,19 @@ impl Coordinator {
                     }
                     let mut count_received: u32 = 0;
                     let mut count_fail: u32 = 0;
-                    //println!("starting loop to receive from participants");
-                    while count_received < self.num_participants {
+                    println!("starting loop to receive from participants");
+                    while count_received < self.num_participants && self.running.load(Ordering::SeqCst) {
                         for i in 0..self.num_participants as usize {
                             //let participant_index: usize = i as usize;
                             match self.participants[i].rx_channel.try_recv() {
                                 Ok(res) => {
                                     // Do something interesting with your result
-                                    //println!("Received data from participant {}",i);
+                                    println!("Received data from participant {}",i);
                                     if res.mtype == MessageType::ParticipantVoteAbort {
                                         count_fail += 1;
                                     }
                                     count_received += 1;
-                                    //println!("count received from participant: {}",count_received);
+                                    println!("count received from participants: {}",count_received);
                                     //client_q.add(res);
                                     //break;
                                 },
@@ -260,7 +260,7 @@ impl Coordinator {
                                     //println!("no message yet, moving to next participant");
                                 }
                             }
-                            //println!("currently received {}",count_received);
+                            //println!("coordinator currently received {}",count_received);
                         }
                     }
                     if count_fail > 0 {

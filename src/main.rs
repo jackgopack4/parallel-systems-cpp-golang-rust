@@ -239,6 +239,7 @@ fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
         opts.operation_success_probability.clone(),
         opts.ipc_path.clone(),
         opts.num_requests.clone(),
+        (opts.num_requests*opts.num_clients).clone(),
         tx,
         rx
     );

@@ -50,6 +50,7 @@ pub struct Participant {
     operation_success_prob: f64,
     server_name: String,
     num_requests: u32,
+    total_requests: u32,
     failed_ops: u64,
     successful_ops: u64,
     unknown_ops: u64,
@@ -87,6 +88,7 @@ impl Participant {
         operation_success_prob: f64,
         server_name: String,
         num_requests: u32,
+        total_requests: u32,
         tx: Sender<ProtocolMessage>,
         rx: Receiver<ProtocolMessage>) -> Participant {
 
@@ -100,6 +102,7 @@ impl Participant {
             // TODO
             server_name: server_name,
             num_requests: num_requests,
+            total_requests: total_requests,
             successful_ops: 0,
             failed_ops: 0,
             unknown_ops: 0,
@@ -153,7 +156,7 @@ impl Participant {
                     pm.txid.clone(), 
                     pm.senderid.clone(),
                     pm.opid.clone());
-                    self.send(success_pm);
+                self.send(success_pm);
                 self.unknown_ops -= 1;
                 self.successful_ops += 1;
                 return true
@@ -164,7 +167,7 @@ impl Participant {
                     pm.txid.clone(), 
                     pm.senderid.clone(),
                     pm.opid.clone());
-                    self.send(fail_pm);
+                self.send(fail_pm);
                 self.unknown_ops -= 1;
                 self.failed_ops += 1;
                 return false
@@ -213,7 +216,7 @@ impl Participant {
         trace!("{}::Beginning protocol", self.id_str.clone());
 
         // TODO
-        while self.failed_ops+self.successful_ops < self.num_requests as u64 && self.running.load(Ordering::SeqCst) {
+        while self.failed_ops+self.successful_ops < self.total_requests as u64 && self.running.load(Ordering::SeqCst) {
             let request_option = self.rx_channel.recv().unwrap();
             if !self.running.load(Ordering::SeqCst) {
                 break;
