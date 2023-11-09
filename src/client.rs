@@ -99,7 +99,7 @@ impl Client {
     pub fn send_next_operation(&mut self) {
 
         // Create a new request with a unique TXID.
-        self.num_requests = self.num_requests + 1;
+        //self.num_requests = self.num_requests + 1;
         let txid = format!("{}_op_{}", self.id_str.clone(), self.num_requests);
         let pm = message::ProtocolMessage::generate(message::MessageType::ClientRequest,
                                                     txid.clone(),
@@ -124,6 +124,9 @@ impl Client {
         info!("{}::Receiving Coordinator Result", self.id_str.clone());
 
         // TODO
+        if self.successful_ops >= self.num_requests {
+            return;
+        }
         let rx_msg = self.rx_channel.recv().unwrap();
         self.unknown_ops -= 1;
         if rx_msg.mtype == MessageType::CoordinatorAbort {
@@ -131,6 +134,7 @@ impl Client {
         } else if rx_msg.mtype == MessageType::CoordinatorCommit {
             self.successful_ops += 1;
         }
+        println!("client successful ops: {}",self.successful_ops);
     }
 
     ///
@@ -158,13 +162,16 @@ impl Client {
     pub fn protocol(&mut self, n_requests: u32) {
 
         // TODO
-        println!("{}",format!("running client protocol child id {}",self.id_str));
-        while self.failed_ops+self.successful_ops < self.num_requests && self.running.load(Ordering::SeqCst) {
+        println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
+        while ((self.failed_ops+self.successful_ops) < self.num_requests) && self.running.load(Ordering::SeqCst) {
+            println!("starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.num_requests,self.failed_ops,self.successful_ops);
             self.send_next_operation();
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
             self.recv_result();
+            println!("successful ops at client in protocol: {}",self.successful_ops);
+            println!("failed ops at client in protocol: {}",self.failed_ops);
         }
         self.wait_for_exit_signal();
         self.report_status();
