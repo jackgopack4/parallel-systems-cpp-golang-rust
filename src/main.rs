@@ -42,13 +42,13 @@ fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions, server:IpcOn
         .args(child_opts.as_vec())
         .spawn()
         .expect("Failed to execute child process");
-    println!("{}",format!("spawned child pid: {}, id: {}",child.id(),child_opts.num));
+    //println!("{}",format!("spawned child pid: {}, id: {}",child.id(),child_opts.num));
     let (_,(tx_to_child,rx_from_child)) = server.accept().unwrap();
     //let (tx, rx) = channel().unwrap();
     // TODO
     //let tx0 = Sender::connect(child_opts.ipc_path.clone()).unwrap();
     //tx0.send(tx).unwrap();
-    println!("received tx,rx for child id: {}",child_opts.num);
+    //println!("received tx,rx for child id: {}",child_opts.num);
     (child, tx_to_child, rx_from_child)
 }
 
@@ -67,12 +67,12 @@ fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMess
     let (tx_to_parent, rx_from_child) = channel().unwrap();
     let (tx_to_child, rx_from_parent) = channel().unwrap();
     let server_name = opts.ipc_path.clone();
-    println!("{}",format!("connecting to coordinator, id: {}",opts.num));
+    //println!("{}",format!("connecting to coordinator, id: {}",opts.num));
     let tx0: Sender<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)> = Sender::connect(server_name).unwrap();
-    println!("{}",format!("created server tx channel, id: {}",opts.num));
+    //println!("{}",format!("created server tx channel, id: {}",opts.num));
     // TODO
     tx0.send((tx_to_child,rx_from_child)).unwrap();
-    println!("{}",format!("sent child tx/rx channels, id: {}",opts.num));
+    //println!("{}",format!("sent child tx/rx channels, id: {}",opts.num));
     (tx_to_parent, rx_from_parent)
 }
 
@@ -93,12 +93,14 @@ fn connect_to_coordinator(opts: &tpcoptions::TPCOptions) -> (Sender<ProtocolMess
 fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     let coord_log_path = format!("{}//{}", opts.log_path, "coordinator.log");
     // TODO
+    /*
     println!("running, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
                 opts.send_success_probability,
                 opts.operation_success_probability,
                 opts.num_clients,
                 opts.num_requests,
                 opts.num_participants);
+    */
     // starting with one client and one participant, one request each
     //opts.ipc_path = server_name.clone();
 
@@ -188,6 +190,7 @@ fn run(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 ///
 fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     // TODO
+    /*
     println!("running client {}, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
                 opts.num,
                 opts.send_success_probability,
@@ -195,6 +198,7 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_clients,
                 opts.num_requests,
                 opts.num_participants);
+    */
     let client_id_str: String = format!("client_{}", opts.num);
     let (tx,rx) = connect_to_coordinator(opts); 
     let mut client: client::Client = client::Client::new(
@@ -221,6 +225,7 @@ fn run_client(opts: &tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
 fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
     let participant_id_str: String = format!("participant_{}", opts.num);
     let participant_log_path: String = format!("{}//{}.log", opts.log_path, participant_id_str);
+    /*
     println!("running participant {}, send_prob:{}, op_prob:{}, clients:{}, requests:{}, participants:{}",
                 opts.num,
                 opts.send_success_probability,
@@ -228,6 +233,7 @@ fn run_participant(opts: & tpcoptions::TPCOptions, running: Arc<AtomicBool>) {
                 opts.num_clients,
                 opts.num_requests,
                 opts.num_participants);
+    */
     // TODO
     let (tx,rx) = connect_to_coordinator(opts); 
 

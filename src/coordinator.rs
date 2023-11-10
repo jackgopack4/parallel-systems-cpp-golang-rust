@@ -173,7 +173,7 @@ impl Coordinator {
     /// HINT: Wait for some kind of exit signal before returning from the protocol!
     ///
     pub fn protocol(&mut self) {
-        println!("running coord protocol total_requests {}",self.total_requests);
+        //println!("running coord protocol total_requests {}",self.total_requests);
         // TODO
         let mut client_q: Queue<ProtocolMessage> = queue![];
         let mut cur_rqst: ProtocolMessage = ProtocolMessage{
@@ -192,7 +192,7 @@ impl Coordinator {
                             match self.clients[idx].rx_channel.try_recv() {
                                 Ok(res) => {
                                     // Do something interesting with your result
-                                    println!("Received data from client {}",idx);
+                                    //println!("Received data from client {}",idx);
                                     self.log.append(res.mtype.clone(), res.txid.clone(), res.senderid.clone(), res.opid.clone());
                                     client_q.add(res).unwrap();
                                     self.unknown_ops += 1;
@@ -200,18 +200,18 @@ impl Coordinator {
                                 },
                                 Err(_) => {
                                     // Do something else useful while we wait
-                                    println!("Incrementing counter to check next client for traffic");
+                                    //println!("Incrementing counter to check next client for traffic");
                                     idx += 1;
                                 }
                             }
                         }
-                        println!("coord broke out of rx loop");
+                        //println!("coord broke out of rx loop");
                         
                     }
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
-                    cur_rqst = client_q.remove().unwrap();
+                    cur_rqst = client_q.remove().unwrap().clone();
                     self.state = CoordinatorState::ReceivedRequest;
                 },
                 CoordinatorState::ReceivedRequest => {
@@ -227,12 +227,12 @@ impl Coordinator {
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
                         self.participants[i].tx_channel.send(tmp_rqst.clone()).unwrap();
-                        println!("sent request to participant {}",i);
+                        //println!("sent request to participant {}",i);
                     }
                     self.log.append(MessageType::CoordinatorPropose, cur_rqst.txid.clone(), cur_rqst.senderid.clone(), cur_rqst.opid.clone());
 
-                    println!("sent request to all {} participants",self.num_participants);
-                    println!("coord succesful: {}, failed: {}, unknown: {}, total: {}",self.successful_ops,self.failed_ops,self.failed_ops,self.total_requests);
+                    //println!("sent request to all {} participants",self.num_participants);
+                    //println!("coord succesful: {}, failed: {}, unknown: {}, total: {}",self.successful_ops,self.failed_ops,self.failed_ops,self.total_requests);
                     self.state = CoordinatorState::ProposalSent;
                 },
                 CoordinatorState::ProposalSent => {
@@ -241,19 +241,22 @@ impl Coordinator {
                     }
                     let mut count_received: u32 = 0;
                     let mut count_fail: u32 = 0;
-                    println!("starting loop to receive from participants");
+                    //println!("starting loop to receive from participants");
                     while count_received < self.num_participants && self.running.load(Ordering::SeqCst) {
                         for i in 0..self.num_participants as usize {
                             //let participant_index: usize = i as usize;
                             match self.participants[i].rx_channel.try_recv() {
                                 Ok(res) => {
                                     // Do something interesting with your result
-                                    println!("Received data from participant {}",i);
+                                    //println!("Received data from participant {}",i);
                                     if res.mtype == MessageType::ParticipantVoteAbort {
                                         count_fail += 1;
                                     }
                                     count_received += 1;
-                                    println!("count received from participants: {}",count_received);
+                                    if i == 0 {
+                                        cur_rqst = res.clone();
+                                    }
+                                    //println!("count received from participants: {}",count_received);
                                     //client_q.add(res);
                                     //break;
                                 },
@@ -268,10 +271,10 @@ impl Coordinator {
                     }
                     if count_fail > 0 {
                         self.state = CoordinatorState::ReceivedVotesAbort;
-                        println!("coordinator moving to abort");
+                        //println!("coordinator moving to abort");
                     } else {
                         self.state = CoordinatorState::ReceivedVotesCommit;
-                        println!("coordinator moving to commit");
+                        //println!("coordinator moving to commit");
                     }
                 },
                 CoordinatorState::ReceivedVotesAbort => {
@@ -299,6 +302,7 @@ impl Coordinator {
                     }
                     self.log.append(MessageType::CoordinatorAbort,cur_rqst.txid.clone(),cur_rqst.senderid.clone(),cur_rqst.opid.clone());
                     self.failed_ops += 1;
+                    self.unknown_ops -= 1;
                     self.state = CoordinatorState::SentGlobalDecision;
                 },
                 CoordinatorState::ReceivedVotesCommit => {
@@ -351,6 +355,7 @@ impl Coordinator {
                 },
             }
         }
+        println!("coord finished, waiting for exit signal!");
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
         }

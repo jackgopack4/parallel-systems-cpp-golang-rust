@@ -34,6 +34,7 @@ pub struct Client {
     pub successful_ops: u32,
     pub failed_ops: u32,
     pub unknown_ops: u32,
+    pub cur_rqst: u32
 }
 
 ///
@@ -74,6 +75,7 @@ impl Client {
             successful_ops: 0,
             failed_ops: 0,
             unknown_ops: 0,
+            cur_rqst: 0,
         }
     }
 
@@ -102,16 +104,17 @@ impl Client {
 
         // Create a new request with a unique TXID.
         //self.num_requests = self.num_requests + 1;
-        let txid = format!("{}_op_{}", self.id_str.clone(), self.num_requests);
+        let txid = format!("{}_op_{}", self.id_str.clone(), self.cur_rqst);
         let pm = message::ProtocolMessage::generate(message::MessageType::ClientRequest,
                                                     txid.clone(),
                                                     self.id_str.clone(),
                                                     self.num_requests);
         info!("{}::Sending operation #{}", self.id_str.clone(), self.num_requests);
-
         // TODO
         self.tx_channel.send(pm).unwrap();
         self.unknown_ops += 1;
+
+        self.cur_rqst += 1;
         trace!("{}::Sent operation #{}", self.id_str.clone(), self.num_requests);
     }
 
@@ -136,7 +139,7 @@ impl Client {
         } else if rx_msg.mtype == MessageType::CoordinatorCommit {
             self.successful_ops += 1;
         }
-        println!("client successful ops: {}",self.successful_ops);
+        //println!("client successful ops: {}",self.successful_ops);
     }
 
     ///
@@ -164,16 +167,16 @@ impl Client {
     pub fn protocol(&mut self, n_requests: u32) {
 
         // TODO
-        println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
+        //println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
         while ((self.failed_ops+self.successful_ops) < self.num_requests) && self.running.load(Ordering::SeqCst) {
-            println!("{} starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.id_str,self.num_requests,self.failed_ops,self.successful_ops);
+            //println!("{} starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.id_str,self.num_requests,self.failed_ops,self.successful_ops);
             self.send_next_operation();
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
             self.recv_result();
-            println!("successful ops at client in protocol: {}",self.successful_ops);
-            println!("failed ops at client in protocol: {}",self.failed_ops);
+            //println!("successful ops at client in protocol: {}",self.successful_ops);
+            //println!("failed ops at client in protocol: {}",self.failed_ops);
         }
         self.wait_for_exit_signal();
         self.report_status();

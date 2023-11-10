@@ -159,7 +159,7 @@ impl Participant {
                 self.send(success_pm);
                 // Log the participant vote success
                 self.log.append(MessageType::ParticipantVoteCommit, pm.txid.clone(), pm.senderid.clone(), pm.opid.clone());
-                println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
+                //println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
 
             } else {
                 // TODO: Failed operation
@@ -171,7 +171,7 @@ impl Participant {
                 self.send(fail_pm);
                 // Log the participant vote fail
                 self.log.append(MessageType::ParticipantVoteAbort,pm.txid.clone(),pm.senderid.clone(),pm.opid.clone());
-                println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
+                //println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
             }
             let coordinator_result = self.rx_channel.recv().unwrap();
             self.log.append(coordinator_result.mtype,coordinator_result.txid,coordinator_result.senderid,coordinator_result.opid);
@@ -229,13 +229,11 @@ impl Participant {
     pub fn protocol(&mut self) {
         trace!("{}::Beginning protocol", self.id_str.clone());
 
-        // TODO: TAKE OUT THE RUNNING CHECK
-        while self.failed_ops+self.successful_ops < self.total_requests as u64 && self.running.load(Ordering::SeqCst) {
+        // TODO:
+        while self.failed_ops+self.successful_ops < self.total_requests as u64 {
             let request_option = self.rx_channel.recv().unwrap();
             self.log.append(request_option.mtype.clone(), request_option.txid.clone(), request_option.senderid.clone(), request_option.opid.clone());
-            if !self.running.load(Ordering::SeqCst) {
-                break;
-            }
+
             self.perform_operation(&Some(request_option));
         }
 
