@@ -85,10 +85,12 @@ impl Client {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
+        let _ = self.rx_channel.recv().unwrap();
+        /*
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
         }
-
+        */
         trace!("{}::Exiting", self.id_str.clone());
     }
 
@@ -164,7 +166,7 @@ impl Client {
         // TODO
         println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
         while ((self.failed_ops+self.successful_ops) < self.num_requests) && self.running.load(Ordering::SeqCst) {
-            println!("starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.num_requests,self.failed_ops,self.successful_ops);
+            println!("{} starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.id_str,self.num_requests,self.failed_ops,self.successful_ops);
             self.send_next_operation();
             if !self.running.load(Ordering::SeqCst) {
                 break;

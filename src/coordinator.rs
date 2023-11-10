@@ -193,6 +193,7 @@ impl Coordinator {
                                 Ok(res) => {
                                     // Do something interesting with your result
                                     println!("Received data from client {}",idx);
+                                    self.log.append(res.mtype.clone(), res.txid.clone(), res.senderid.clone(), res.opid.clone());
                                     client_q.add(res).unwrap();
                                     self.unknown_ops += 1;
                                     break;
@@ -228,8 +229,10 @@ impl Coordinator {
                         self.participants[i].tx_channel.send(tmp_rqst.clone()).unwrap();
                         println!("sent request to participant {}",i);
                     }
+                    self.log.append(MessageType::CoordinatorPropose, cur_rqst.txid.clone(), cur_rqst.senderid.clone(), cur_rqst.opid.clone());
+
                     println!("sent request to all {} participants",self.num_participants);
-                    println!("succesful: {}, failed: {}, total: {}",self.successful_ops,self.failed_ops,self.total_requests);
+                    println!("coord succesful: {}, failed: {}, unknown: {}, total: {}",self.successful_ops,self.failed_ops,self.failed_ops,self.total_requests);
                     self.state = CoordinatorState::ProposalSent;
                 },
                 CoordinatorState::ProposalSent => {
@@ -294,6 +297,7 @@ impl Coordinator {
                             self.clients[i].tx_channel.send(tmp_abort_msg.clone()).unwrap();
                         }
                     }
+                    self.log.append(MessageType::CoordinatorAbort,cur_rqst.txid.clone(),cur_rqst.senderid.clone(),cur_rqst.opid.clone());
                     self.failed_ops += 1;
                     self.state = CoordinatorState::SentGlobalDecision;
                 },
@@ -320,23 +324,52 @@ impl Coordinator {
                             self.clients[i].tx_channel.send(tmp_commit_msg.clone()).unwrap();
                         }
                     }
+                    self.log.append(MessageType::CoordinatorCommit,cur_rqst.txid.clone(),cur_rqst.senderid.clone(),cur_rqst.opid.clone());
+
+                    /* 
+                    for i in 0..self.num_participants as usize {
+                        tmp_commit_msg = ProtocolMessage::generate(
+                            MessageType::CoordinatorCommit, 
+                            cur_rqst.txid.clone(), 
+                            cur_rqst.senderid.clone(), 
+                            cur_rqst.opid.clone());
+                        self.participants[i].tx_channel.send(tmp_commit_msg.clone()).unwrap();
+                    }
+                    */
                     self.successful_ops += 1;
                     self.unknown_ops -= 1;
                     self.state = CoordinatorState::SentGlobalDecision;
                 },
                 CoordinatorState::SentGlobalDecision => {
+                    self.state = CoordinatorState::Quiescent;
                     if self.successful_ops+self.failed_ops == self.total_requests {
                         break;
                     }
                     else if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
-                    self.state = CoordinatorState::Quiescent;
                 },
             }
         }
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
+        }
+        let mut exit_msg: ProtocolMessage;
+        for i in 0..self.num_participants as usize {
+            exit_msg = ProtocolMessage::generate(
+                MessageType::CoordinatorExit, 
+                format!("coordinator_op_1"), 
+                format!("coordinator"), 
+                1);
+            self.participants[i].tx_channel.send(exit_msg.clone()).unwrap();
+        }
+        for i in 0..self.num_clients as usize {
+            exit_msg = ProtocolMessage::generate(
+                MessageType::CoordinatorExit, 
+                format!("coordinator_op_1"), 
+                format!("coordinator"), 
+                1);
+            self.clients[i].tx_channel.send(exit_msg.clone()).unwrap();
         }
         self.report_status();
     }
