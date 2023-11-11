@@ -36,7 +36,7 @@ use crate::tpcoptions::TPCOptions;
 /// 4. Return the child process handle and the communication channels for the parent
 ///
 /// HINT: You can change the signature of the function if necessary
-///
+/// added comment to force commit
 fn spawn_child_and_connect(child_opts: &mut tpcoptions::TPCOptions, server:IpcOneShotServer::<(Sender<ProtocolMessage>,Receiver<ProtocolMessage>)>) -> (Child, Sender<ProtocolMessage>, Receiver<ProtocolMessage>) {
     let child = Command::new(env::current_exe().unwrap())
         .args(child_opts.as_vec())
