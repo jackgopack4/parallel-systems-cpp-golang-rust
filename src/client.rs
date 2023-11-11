@@ -108,7 +108,7 @@ impl Client {
         let pm = message::ProtocolMessage::generate(message::MessageType::ClientRequest,
                                                     txid.clone(),
                                                     self.id_str.clone(),
-                                                    self.num_requests);
+                                                    self.cur_rqst);
         info!("{}::Sending operation #{}", self.id_str.clone(), self.num_requests);
         // TODO
         self.tx_channel.send(pm).unwrap();
