@@ -87,7 +87,9 @@ impl Client {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
-        let _ = self.rx_channel.recv().unwrap();
+        if self.running.load(Ordering::SeqCst) {
+            let _ = self.rx_channel.recv().unwrap();
+        }
         /*
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
@@ -132,12 +134,21 @@ impl Client {
         if self.successful_ops >= self.num_requests {
             return;
         }
-        let rx_msg = self.rx_channel.recv().unwrap();
-        self.unknown_ops -= 1;
-        if rx_msg.mtype == MessageType::CoordinatorAbort {
-            self.failed_ops += 1;
-        } else if rx_msg.mtype == MessageType::CoordinatorCommit {
-            self.successful_ops += 1;
+        if self.running.load(Ordering::SeqCst) {
+            match self.rx_channel.recv() {
+                Ok(rx_msg) => {
+                    if rx_msg.mtype == MessageType::CoordinatorAbort {
+                        self.failed_ops += 1;
+                        self.unknown_ops -= 1;
+                    } else if rx_msg.mtype == MessageType::CoordinatorCommit {
+                        self.successful_ops += 1;
+                        self.unknown_ops -= 1;
+                    }
+                },
+                Err(_) => {
+
+                }
+            }
         }
         //println!("client successful ops: {}",self.successful_ops);
     }
@@ -168,7 +179,7 @@ impl Client {
 
         // TODO
         //println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
-        while ((self.failed_ops+self.successful_ops) < self.num_requests) {
+        while ((self.failed_ops+self.successful_ops) < self.num_requests) && self.running.load(Ordering::SeqCst) {
             //println!("{} starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.id_str,self.num_requests,self.failed_ops,self.successful_ops);
             self.send_next_operation();
             /* 

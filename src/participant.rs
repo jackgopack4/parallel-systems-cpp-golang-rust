@@ -123,9 +123,16 @@ impl Participant {
         let x: f64 = random();
         // FOR NOW ALWAYS SEND TO MAKE SURE STUFF FINISHES
         
-        if x <= self.send_success_prob {
+        if x <= self.send_success_prob && self.running.load(Ordering::SeqCst) {
             // TODO: Send success
-            self.tx_channel.send(pm).unwrap();
+            match self.tx_channel.send(pm) {
+                Ok(_) => {
+
+                }, Err(_) => {
+
+                }
+            }
+
         } else {
             // TODO: Send fail
         }
@@ -174,16 +181,28 @@ impl Participant {
                 self.log.append(MessageType::ParticipantVoteAbort,pm.txid.clone(),pm.senderid.clone(),pm.opid.clone());
                 //println!("{} sent success pm, senderid: {}",self.id_str.clone(),pm.senderid.clone());
             }
-            let coordinator_result = self.rx_channel.recv().unwrap();
-            self.log.append(coordinator_result.mtype,coordinator_result.txid,coordinator_result.senderid,coordinator_result.opid);
-            self.unknown_ops -= 1;
-            if coordinator_result.mtype == MessageType::CoordinatorCommit {
-                // Log the coordinator success
-                self.successful_ops += 1;
-            }
-            else {
-                // Log the coordinator fail
-                self.failed_ops += 1;
+            if self.running.load(Ordering::SeqCst) {
+                match self.rx_channel.recv() {
+                    Ok(coordinator_result) => {
+                        self.log.append(coordinator_result.mtype,coordinator_result.txid,coordinator_result.senderid,coordinator_result.opid);
+                        self.unknown_ops -= 1;
+                        if coordinator_result.mtype == MessageType::CoordinatorCommit {
+                            // Log the coordinator success
+                            self.successful_ops += 1;
+                        }
+                        else if coordinator_result.mtype == MessageType::CoordinatorExit {
+                            // Log the coordinator fail
+                            self.failed_ops += 1;
+                            return false;
+                        }
+                        else {
+                            self.failed_ops += 1;
+                        }
+                    }, Err(_) => {
+                        self.failed_ops += 1;
+                    }
+                } 
+
             }
         }
 
@@ -212,7 +231,9 @@ impl Participant {
         trace!("{}::Waiting for exit signal", self.id_str.clone());
 
         // TODO
-        let _ = self.rx_channel.recv().unwrap();
+        if self.running.load(Ordering::SeqCst) {
+            let _ = self.rx_channel.recv().unwrap();
+        }
         /*
         while self.running.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(100));
@@ -231,7 +252,7 @@ impl Participant {
         trace!("{}::Beginning protocol", self.id_str.clone());
 
         // TODO:
-        while self.failed_ops+self.successful_ops < self.total_requests as u64 {
+        while self.failed_ops+self.successful_ops < self.total_requests as u64 && self.running.load(Ordering::SeqCst) {
             let request_option = self.rx_channel.recv().unwrap();
             self.log.append(request_option.mtype.clone(), request_option.txid.clone(), request_option.senderid.clone(), request_option.opid.clone());
 
