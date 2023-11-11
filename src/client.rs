@@ -168,12 +168,14 @@ impl Client {
 
         // TODO
         //println!("{}",format!("running client protocol child id {}, num_requests {}",self.id_str, self.num_requests));
-        while ((self.failed_ops+self.successful_ops) < self.num_requests) && self.running.load(Ordering::SeqCst) {
+        while ((self.failed_ops+self.successful_ops) < self.num_requests) {
             //println!("{} starting next round of client tx/rx, num_requests: {}, failed: {}, success: {}",self.id_str,self.num_requests,self.failed_ops,self.successful_ops);
             self.send_next_operation();
+            /* 
             if !self.running.load(Ordering::SeqCst) {
                 break;
             }
+            */
             self.recv_result();
             //println!("successful ops at client in protocol: {}",self.successful_ops);
             //println!("failed ops at client in protocol: {}",self.failed_ops);

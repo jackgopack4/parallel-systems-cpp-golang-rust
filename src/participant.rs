@@ -122,9 +122,10 @@ impl Participant {
     pub fn send(&mut self, pm: ProtocolMessage) {
         let x: f64 = random();
         // FOR NOW ALWAYS SEND TO MAKE SURE STUFF FINISHES
-        self.tx_channel.send(pm).unwrap();
+        
         if x <= self.send_success_prob {
             // TODO: Send success
+            self.tx_channel.send(pm).unwrap();
         } else {
             // TODO: Send fail
         }

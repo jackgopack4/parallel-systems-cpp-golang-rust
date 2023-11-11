@@ -14,6 +14,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
+use std::time::Instant;
 
 use coordinator::ipc_channel::ipc::IpcSender as Sender;
 use coordinator::ipc_channel::ipc::IpcReceiver as Receiver;
@@ -176,17 +177,11 @@ impl Coordinator {
         //println!("running coord protocol total_requests {}",self.total_requests);
         // TODO
         let mut client_q: Queue<ProtocolMessage> = queue![];
-        let mut cur_rqst: ProtocolMessage = ProtocolMessage{
-                mtype: MessageType::ClientRequest,
-                uid: 0,
-                txid:format!("0"),
-                senderid: format!("0"),
-                opid: 0,
-        };
-        while (self.successful_ops+self.failed_ops < self.total_requests) && self.running.load(Ordering::SeqCst) {
+        let mut cur_rqst: ProtocolMessage = ProtocolMessage::generate(MessageType::ClientRequest, format!("dummy"), format!("none"), 0);
+        while self.successful_ops+self.failed_ops < self.total_requests {
             match self.state {
                 CoordinatorState::Quiescent => { 
-                    while client_q.size() == 0 && self.running.load(Ordering::SeqCst) {
+                    while client_q.size() == 0{
                         let mut idx: usize = 0;
                         while idx < self.num_clients as usize {
                             match self.clients[idx].rx_channel.try_recv() {
@@ -208,16 +203,20 @@ impl Coordinator {
                         //println!("coord broke out of rx loop");
                         
                     }
+                    /*
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
+                    */
                     cur_rqst = client_q.remove().unwrap().clone();
                     self.state = CoordinatorState::ReceivedRequest;
                 },
                 CoordinatorState::ReceivedRequest => {
+                    /*
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
+                    */
                     let mut tmp_rqst: ProtocolMessage;
                     for i in 0..self.num_participants as usize {
                         //let mut child_data: &Child_Data = &self.participants[i];
@@ -236,13 +235,19 @@ impl Coordinator {
                     self.state = CoordinatorState::ProposalSent;
                 },
                 CoordinatorState::ProposalSent => {
+                    /* 
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
+                    */
                     let mut count_received: u32 = 0;
                     let mut count_fail: u32 = 0;
                     //println!("starting loop to receive from participants");
-                    while count_received < self.num_participants && self.running.load(Ordering::SeqCst) {
+                    let start_time = Instant::now();
+                    let mut time_passed = Instant::now().duration_since(start_time);
+                    let timeout_val: u128 = std::cmp::max(10, 5*self.num_participants) as u128;
+                    while count_received < self.num_participants && time_passed.as_millis() < timeout_val {
+                        
                         for i in 0..self.num_participants as usize {
                             //let participant_index: usize = i as usize;
                             match self.participants[i].rx_channel.try_recv() {
@@ -253,23 +258,26 @@ impl Coordinator {
                                         count_fail += 1;
                                     }
                                     count_received += 1;
+                                    /*
                                     if i == 0 {
                                         cur_rqst = res.clone();
                                     }
+                                    */
                                     //println!("count received from participants: {}",count_received);
                                     //client_q.add(res);
                                     //break;
                                 },
                                 Err(_) => {
                                     // Do something else useful while we wait
-                                    thread::sleep(Duration::from_millis(10));
+                                    //thread::sleep(Duration::from_micros(10));
                                     //println!("no message yet, moving to next participant");
                                 }
                             }
                             //println!("coordinator currently received {}",count_received);
                         }
+                        time_passed = Instant::now().duration_since(start_time)
                     }
-                    if count_fail > 0 {
+                    if count_fail > 0 || count_received < self.num_participants {
                         self.state = CoordinatorState::ReceivedVotesAbort;
                         //println!("coordinator moving to abort");
                     } else {
@@ -278,9 +286,11 @@ impl Coordinator {
                     }
                 },
                 CoordinatorState::ReceivedVotesAbort => {
+                    /* 
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
+                    */
                     let mut tmp_abort_msg: ProtocolMessage;
                     for i in 0..self.num_participants as usize {
                         tmp_abort_msg = ProtocolMessage::generate(
@@ -306,9 +316,11 @@ impl Coordinator {
                     self.state = CoordinatorState::SentGlobalDecision;
                 },
                 CoordinatorState::ReceivedVotesCommit => {
+                    /* 
                     if !self.running.load(Ordering::SeqCst) {
                         break;
                     }
+                    */
                     let mut tmp_commit_msg: ProtocolMessage; 
                     for i in 0..self.num_participants as usize {
                         tmp_commit_msg = ProtocolMessage::generate(
@@ -330,16 +342,6 @@ impl Coordinator {
                     }
                     self.log.append(MessageType::CoordinatorCommit,cur_rqst.txid.clone(),cur_rqst.senderid.clone(),cur_rqst.opid.clone());
 
-                    /* 
-                    for i in 0..self.num_participants as usize {
-                        tmp_commit_msg = ProtocolMessage::generate(
-                            MessageType::CoordinatorCommit, 
-                            cur_rqst.txid.clone(), 
-                            cur_rqst.senderid.clone(), 
-                            cur_rqst.opid.clone());
-                        self.participants[i].tx_channel.send(tmp_commit_msg.clone()).unwrap();
-                    }
-                    */
                     self.successful_ops += 1;
                     self.unknown_ops -= 1;
                     self.state = CoordinatorState::SentGlobalDecision;
@@ -349,15 +351,12 @@ impl Coordinator {
                     if self.successful_ops+self.failed_ops == self.total_requests {
                         break;
                     }
-                    else if !self.running.load(Ordering::SeqCst) {
-                        break;
-                    }
                 },
             }
         }
         println!("coord finished, waiting for exit signal!");
         while self.running.load(Ordering::SeqCst) {
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(10));
         }
         let mut exit_msg: ProtocolMessage;
         for i in 0..self.num_participants as usize {
