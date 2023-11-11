@@ -235,7 +235,13 @@ impl Coordinator {
                             cur_rqst.txid.clone(), 
                             cur_rqst.senderid.clone(), 
                             cur_rqst.opid.clone());
-                        self.participants[i].tx_channel.send(tmp_rqst.clone()).unwrap();
+                        match self.participants[i].tx_channel.send(tmp_rqst.clone()) {
+                            Ok(_) => {
+
+                            }, Err(_) => {
+                                i = self.num_participants as usize;
+                            }
+                        }
                         i+=1;
                         //println!("sent request to participant {}",i);
                     }
@@ -392,7 +398,13 @@ impl Coordinator {
                 format!("coordinator_op_1"), 
                 format!("coordinator"), 
                 1);
-            self.participants[i].tx_channel.send(exit_msg.clone()).unwrap();
+            match self.participants[i].tx_channel.send(exit_msg.clone()) {
+                Ok(_) => {
+
+                }, Err(_) => {
+
+                }
+            }
         }
         for i in 0..self.num_clients as usize {
             exit_msg = ProtocolMessage::generate(
@@ -400,7 +412,13 @@ impl Coordinator {
                 format!("coordinator_op_1"), 
                 format!("coordinator"), 
                 1);
-            self.clients[i].tx_channel.send(exit_msg.clone()).unwrap();
+            match self.clients[i].tx_channel.send(exit_msg.clone()) {
+                Ok(_) => {
+
+                }, Err(_) => {
+
+                }
+            }
         }
         self.report_status();
     }

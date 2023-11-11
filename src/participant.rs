@@ -253,10 +253,16 @@ impl Participant {
 
         // TODO:
         while self.failed_ops+self.successful_ops < self.total_requests as u64 && self.running.load(Ordering::SeqCst) {
-            let request_option = self.rx_channel.recv().unwrap();
-            self.log.append(request_option.mtype.clone(), request_option.txid.clone(), request_option.senderid.clone(), request_option.opid.clone());
+            match self.rx_channel.recv(){
+                Ok(request_option) => {
+                    self.log.append(request_option.mtype.clone(), request_option.txid.clone(), request_option.senderid.clone(), request_option.opid.clone());
+        
+                    self.perform_operation(&Some(request_option));
 
-            self.perform_operation(&Some(request_option));
+                }, Err(_) => {
+                    break;
+                }
+            }
         }
 
         self.wait_for_exit_signal();
