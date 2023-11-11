@@ -109,13 +109,13 @@ impl Client {
                                                     txid.clone(),
                                                     self.id_str.clone(),
                                                     self.cur_rqst);
-        info!("{}::Sending operation #{}", self.id_str.clone(), self.num_requests);
+        info!("{}::Sending operation #{}", self.id_str.clone(), self.cur_rqst);
         // TODO
         self.tx_channel.send(pm).unwrap();
         self.unknown_ops += 1;
 
         self.cur_rqst += 1;
-        trace!("{}::Sent operation #{}", self.id_str.clone(), self.num_requests);
+        trace!("{}::Sent operation #{}", self.id_str.clone(), self.cur_rqst);
     }
 
     ///
