@@ -10,5 +10,9 @@ Lab3/~$simple-hashTimes.xlsx
 Lab3/~$b3-Report-PetersonJ.docx
 Lab4/target/
 Lab4/logs/
-utils/
-Lab5/utils/
+utils/glfw-3.3/
+utils/mpich-3.3.1/
+utils/valgrind-3.15.0/
+Lab5/utils/glfw-3.3/
+Lab5/utils/mpich-3.3.1/
+Lab5/valgrind-3.15.0/
