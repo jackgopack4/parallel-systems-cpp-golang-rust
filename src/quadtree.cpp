@@ -7,6 +7,7 @@
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
+#include "datavector.h"
 
 const int MAX_CAPACITY = 1;
 struct Point {
@@ -60,7 +61,7 @@ public:
     }
 
     void insert(Node* node, const Point& point) {
-      std::cout << "inserting point (" << point.x << ", " << point.y << ")" << std::endl;
+      //std::cout << "inserting point (" << point.x << ", " << point.y << ")" << std::endl;
       if (point.x > 0 && point.x < 4 && point.y > 0 && point.y < 4) {
         if (node->isLeaf()) {
             if (node->points.size() < MAX_CAPACITY) {
@@ -140,8 +141,12 @@ void printPoint(const Point& point) {
 }
 
 int main() {
+    double test_vals[2]{2.810173e+00,1.999232e+00};
+    Datavector test_vector(2, test_vals);
+    std::cout << "test vector 1: " << test_vector << std::endl;
+
     Quadtree quadtree(4, 4);
-    quadtree.printTree();
+    //quadtree.printTree();
     // Insert some points for testing
     quadtree.insert(Point(5,	2.810173e+00,	1.999232e+00,	2.235070e+00,	0.000000e+00,	0.000000e+00));
     quadtree.insert(Point(0,    2.054482e+00,	6.003183e-01,	2.647132e+00,	0.000000e+00,	0.000000e+00));
