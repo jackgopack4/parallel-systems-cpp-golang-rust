@@ -1,0 +1,4 @@
+- first attempt was to make point, node, and quad tree structure
+- Then, found princeton assignment at https://introcs.cs.princeton.edu/java/34nbody/
+  and decided to adapt my solution to have more native class-based vectors
+  and points, etc.
