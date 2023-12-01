@@ -7,7 +7,8 @@
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
-#include "datavector.h"
+//#include "datavector.h"
+#include "body.h"
 
 const int MAX_CAPACITY = 1;
 struct Point {
@@ -142,8 +143,13 @@ void printPoint(const Point& point) {
 
 int main() {
     double test_vals[2]{2.810173e+00,1.999232e+00};
-    Datavector test_vector(2, test_vals);
-    std::cout << "test vector 1: " << test_vector << std::endl;
+    double test_vals_2[2]{0.000000e+00,	0.000000e+00};
+    Datavector test_pos(2, test_vals);
+    Datavector test_vel(2,test_vals_2);
+    std::cout << "test vector 1: " << test_pos << std::endl;
+
+    Body test_body(test_pos,test_vel,2.235070e+00);
+    std::cout <<"test body: " << test_body << std::endl;
 
     Quadtree quadtree(4, 4);
     //quadtree.printTree();

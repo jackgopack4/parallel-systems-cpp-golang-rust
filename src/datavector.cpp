@@ -1,5 +1,7 @@
 #include "datavector.h"
 
+Datavector::Datavector(const Datavector& other) : n(other.n), data(other.data) {}
+
 Datavector::Datavector(int _n) 
 {
   n = _n;
@@ -44,27 +46,27 @@ double Datavector::magnitude()
   return std::sqrt(this->dot(this));
 }
 
-double Datavector::distanceTo(Datavector other) 
+double Datavector::distanceTo(Datavector* other) 
 {
   return this->minus(other)->magnitude();
 }
 
-Datavector* Datavector::plus(Datavector other) 
+Datavector* Datavector::plus(Datavector* other) 
 {
   Datavector* sum = new Datavector(n);
   for(auto i=0;i<n;++i) 
   {
-    sum->data[i] = data[i] + other.data[i];
+    sum->data[i] = data[i] + other->data[i];
   }
   return sum;
 }
 
-Datavector* Datavector::minus(Datavector other) 
+Datavector* Datavector::minus(Datavector* other) 
 {
   Datavector* diff = new Datavector(n);
   for(auto i=0; i<n; ++i) 
   {
-    diff->data[i] = data[i] + other.data[i];
+    diff->data[i] = data[i] + other->data[i];
   }
   return diff;
 }

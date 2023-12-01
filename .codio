@@ -1,5 +1,6 @@
 {
     "preview": {
         "Virtual Desktop": "https://{{domain3000}}/"
-    }
+    },
+  "debugger": [{"type":"GDB","command":"./bin/nbody","before":"","uuid":"f9218d81-a0fb-200e-6936-e1f69d143707","name":"quadtree"}]
 }
