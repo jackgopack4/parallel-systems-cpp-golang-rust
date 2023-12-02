@@ -24,6 +24,7 @@ public:
   // methods
   void insert(Body& b);
   void insertIntoQuadrant(Body& b);
+  void updateVectorWithBodies(std::vector<Body>& bodies);
   friend std::ostream& operator << (std::ostream &os, BHTree &bht)
   {
     bht.printTree(0,os);

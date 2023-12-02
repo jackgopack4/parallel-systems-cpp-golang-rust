@@ -26,6 +26,8 @@ class Datavector
     double cartesian(int i);
     Datavector* scale(double factor);
     Datavector* direction();
+    // Overload the equality operator
+    bool operator==(Datavector& other);
     friend std::ostream& operator << (std::ostream &os, Datavector &v)
     {
       return (os << "Vector - magnitude:  " << v.magnitude() << ", x-comp: " << v.data[0] << ", y-comp: " << v.data[1]);

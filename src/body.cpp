@@ -99,3 +99,13 @@ void Body::makeAggregate()
   isAggregate = true;
   index = -1;
 }
+
+bool Body::operator==(Body& other)
+{
+  return position == other.getPosition() && velocity == other.getVelocity();
+}
+
+bool Body::operator!=(Body& other)
+{
+  return !(*this == other);
+}

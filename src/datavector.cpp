@@ -91,3 +91,12 @@ Datavector* Datavector::direction()
   return this->scale(1.0 / this->magnitude());
 }
 
+bool Datavector::operator==(Datavector& other)
+{
+  if (size() != other.size()) return false;
+  for (int i{0}; i< size(); ++i)
+  {
+    if (cartesian(i) != other.cartesian(i)) return false;
+  }
+  return true;
+}

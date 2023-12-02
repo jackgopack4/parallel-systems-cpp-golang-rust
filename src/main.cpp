@@ -47,8 +47,21 @@ int main(int argc, char **argv) {
     //cout << test_tree << endl;
   }
   cout << test_tree << endl;
-
-
+  /*
+  vector<Body> new_bodies(bodies.size());
+  test_tree.updateVectorWithBodies(new_bodies);
+  int len_bodies{(int)bodies.size()};
+  for(int i{0};i<len_bodies;++i) 
+  {
+    if((bodies[i] != new_bodies[i]))
+    {
+      cout << "idx [" << i <<"] not equal: " << bodies[i] << " != " << new_bodies[i] << endl;
+    } else {
+      cout << "idx[" << i <<"] matches!" <<endl;
+    }
+  }
+  */
+  test_tree.updateVectorWithBodies(bodies);
   BodyFileWriter bodyWriter(out_file);
   bodyWriter.writeBodies(bodies);
 
