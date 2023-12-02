@@ -1,5 +1,24 @@
 #include "argparse.h"
+/*
+-i inputfilename (char *): input file name
+-o outputfilename (char *): output file name
+-s steps (int): number of iterations
+-t \theta(double): threshold for MAC
+-d dt(double): timestep
+-V: (OPTIONAL, see below) flag to turn on visualization window
+-p: if true, run in parallel
 
+struct options_t {
+    char *in_file;
+    char *out_file;
+    int steps;
+    double theta;
+    double dt;
+    bool visualize;
+    bool parallel;
+};
+
+*/
 void get_opts(int argc,
               char **argv,
               struct options_t *opts)
@@ -7,82 +26,58 @@ void get_opts(int argc,
     if (argc == 1)
     {
         std::cout << "Usage:" << std::endl;
-        std::cout << "\t[Optional] -k <num_cluster>" <<std::endl;
-        std::cout << "\t -d <dims>" << std::endl;
         std::cout << "\t-i <file_path>" << std::endl;
-        std::cout << "\t[Optional] -m <max_num_iters>" << std::endl;
-        std::cout << "\t[Optional] -t <threshold_convergence>" << std::endl;
-        std::cout << "\t[Optional] -c" << std::endl;
-        std::cout << "\t[Optional] -s <rand_seed>" << std::endl;
-        std::cout << "\t[Optional] -v <seq, cuda, shmem, thrust>" << std::endl;
+        std::cout << "\t-o <file_path>" << std::endl;
+        std::cout << "\t-s <num_steps>" <<std::endl;
+        std::cout << "\t-t <theta>" << std::endl;
+        std::cout << "\t-d <timestep>" << std::endl;
+        std::cout << "\t[Optional] -V <show visualization>" << std::endl;
+        std::cout << "\t[Optional] -p <parallel>" << std::endl;
         exit(0);
     }
 
-    opts->num_cluster = 1;
-    opts->centroids = false;
-    opts->max_num_iter = 1000;
-    opts->threshold = 0.001;
-    opts->seed = 69;
-    opts->version = 0;
+    opts->steps = 100;
+    opts->theta = 0.5;
+    opts->dt = 0.005;
+    opts->visualize = false;
+    opts->parallel = false;
     
     struct option l_opts[] = {
-        {"num_cluster", no_argument, NULL, 'k'},
-        {"dims", required_argument, NULL, 'd'},
-        {"input", required_argument, NULL, 'i'},
-        {"max_num_iter", no_argument, NULL, 'm'},
-        {"threshold", no_argument, NULL, 't'},
-        {"centroids", no_argument, NULL, 'c'},
-        {"seed", no_argument, NULL, 's'},
-        {"version", no_argument, NULL, 'v'},
+        {"input_file_name", required_argument, NULL, 'i'},
+        {"output_file_name", required_argument, NULL, 'o'},
+        {"steps", required_argument, NULL, 's'},
+        {"theta", required_argument, NULL, 't'},
+        {"timestep", required_argument, NULL, 'd'},
+        {"visualize", no_argument, NULL, 'v'},
+        {"parallel", no_argument, NULL, 'p'},
     };
-    
     int ind, c;
-    std::string seq{"seq"};
-    std::string cuda{"cuda"};
-    std::string shmem{"shmem"};
-    std::string thrust{"thrust"};
-    std::string arg_version;
-    while ((c = getopt_long(argc, argv, "k:d:i:m:t:cs:v:", l_opts, &ind)) != -1)
+    while ((c = getopt_long(argc, argv, "i:o:s:t:d:vp", l_opts, &ind)) != -1)
     {
         switch (c)
         {
         case 0:
             break;
-        case 'k':
-            opts->num_cluster = atoi((char *)optarg);
-            break;
-        case 'd':
-            opts->dims = atoi((char *)optarg);
-            break;
         case 'i':
             opts->in_file = (char *)optarg;
             break;
-        case 'm':
-            opts->max_num_iter = atoi((char *)optarg);
-            break;
-        case 't':
-            opts->threshold = atof((char *)optarg) / 10000;
-            break;
-        case 'c':
-            opts->centroids = true;
+        case 'o':
+            opts->out_file = (char *)optarg;
             break;
         case 's':
-            opts->seed = atoi((char *)optarg);
+            opts->steps = atoi((char *)optarg);
+            break;
+        case 't':
+            opts->theta = atof((char *)optarg);
+            break;
+        case 'd':
+            opts->dt = atof((char *)optarg);
             break;
         case 'v':
-            arg_version = (char*) optarg;
-            if(arg_version.compare(seq) == 0) {
-                opts->version = sequential;
-            }
-            else if (arg_version.compare(cuda) == 0) {
-                opts->version = cuda_basic;
-            }
-            else if (arg_version.compare(shmem) == 0) {
-                opts->version = cuda_shmem;
-            }
-            else if (arg_version.compare(thrust) == 0) {
-                opts->version = cuda_thrust;
-            }
+            opts->visualize = true;
+            break;
+        case 'p':
+            opts->parallel = true;
             break;
         case ':':
             std::cerr << argv[0] << ": option -" << (char)optopt << "requires an argument." << std::endl;

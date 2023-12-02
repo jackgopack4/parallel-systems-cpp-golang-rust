@@ -7,15 +7,30 @@
 #include <GL/glut.h>
 #include <iostream>
 #include <vector>
+#include <string>
+#include <cstring>
 //#include "datavector.h"
 #include "body.h"
 #include "bodyfilereader.h"
+#include "argparse.h"
 
-int main() {
-  BodyFileReader bodyReader("input/nb-10.txt");
-  std::vector<Body> bodies = bodyReader.readBodies();
+using namespace std;
+
+int main(int argc, char **argv) {
+  // Parse args
+  struct options_t opts;
+  get_opts(argc, argv, &opts);
+
+  const std::string in_file(opts.in_file);
+  const std::string out_file(opts.out_file);
+
+
+  BodyFileReader bodyReader(in_file);
+  vector<Body> bodies = bodyReader.readBodies();
 
   for(Body b: bodies) {
-    std::cout << b << std::endl;
+    cout << b << endl;
   }
+
+
 }
