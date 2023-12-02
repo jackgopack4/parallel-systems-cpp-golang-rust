@@ -28,7 +28,7 @@ class Body
     int getIndex();
     friend std::ostream& operator << (std::ostream &os, Body &b)
     {
-      return (os << "Body - position:  " << b.position << ", velocity: " << b.velocity << ", mass " << b.mass);
+      return (os << "Body ["<< b.index << "] - position:  " << b.position << ", velocity: " << b.velocity << ", mass " << b.mass);
     }
 };
 

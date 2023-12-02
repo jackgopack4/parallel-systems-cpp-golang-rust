@@ -16,6 +16,6 @@ int main() {
   std::vector<Body> bodies = bodyReader.readBodies();
 
   for(Body b: bodies) {
-    std::cout <<"test body " << b.getIndex() << ": " << b << std::endl;
+    std::cout << b << std::endl;
   }
 }
