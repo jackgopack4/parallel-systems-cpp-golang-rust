@@ -12,6 +12,7 @@
 //#include "datavector.h"
 #include "body.h"
 #include "bodyfilereader.h"
+#include "bodyfilewriter.h"
 #include "argparse.h"
 
 using namespace std;
@@ -32,5 +33,7 @@ int main(int argc, char **argv) {
     cout << b << endl;
   }
 
+  BodyFileWriter bodyWriter(out_file);
+  bodyWriter.writeBodies(bodies);
 
 }

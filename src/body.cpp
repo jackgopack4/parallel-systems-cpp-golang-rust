@@ -54,7 +54,18 @@ Datavector& Body::getPosition()
   return position;
 }
 
+Datavector& Body::getVelocity()
+{
+  return velocity;
+}
+
 int Body::getIndex()
 {
   return index;
 }
+
+double Body::getMass()
+{
+  return mass;
+}
+

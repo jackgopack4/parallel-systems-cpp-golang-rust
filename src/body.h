@@ -25,6 +25,8 @@ class Body
     void move(Datavector* force, double dt);
     Datavector* forceFrom(Body* b);
     Datavector& getPosition();
+    Datavector& getVelocity();
+    double getMass();
     int getIndex();
     friend std::ostream& operator << (std::ostream &os, Body &b)
     {
