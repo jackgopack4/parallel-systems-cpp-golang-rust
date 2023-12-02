@@ -15,12 +15,14 @@ class Body
     double g;
     double rlimit;
     int index;
+    bool isAggregate;
   
   public:
     Body(const Body& other);
     Body();
     Body(int _index, Datavector& initialPosition, Datavector& initialVelocity, double initialMass, double gravity, double limit);
     Body(int _index, Datavector _position, Datavector _velocity, double _mass);
+    Body(int _index, Datavector _position, Datavector _velocity, double _mass, bool _aggregate);
     //Body(Datavector _position, Datavector _velocity, double _mass, double _g, double _rlimit);
     void move(Datavector* force, double dt);
     Datavector* forceFrom(Body* b);
@@ -28,9 +30,20 @@ class Body
     Datavector& getVelocity();
     double getMass();
     int getIndex();
+    void setMass(double _mass);
+    void setPosition(std::vector<double> _position);
+    void makeAggregate();
     friend std::ostream& operator << (std::ostream &os, Body &b)
     {
-      return (os << "Body ["<< b.index << "] - position:  " << b.position << ", velocity: " << b.velocity << ", mass " << b.mass);
+      if (b.isAggregate) 
+      {
+        os << "Aggregate - ";
+      } else 
+      {
+        os << "Body["<< b.index << "] - ";
+      }
+      os << "position:  " << b.position << ", velocity: " << b.velocity << ", mass " << b.mass;
+      return os;
     }
 };
 

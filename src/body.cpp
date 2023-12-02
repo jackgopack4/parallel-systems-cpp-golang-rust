@@ -3,16 +3,18 @@
 Body::Body(const Body& other) : position(other.position), velocity(other.velocity), mass(other.mass), index(other.index) {
   g = 0.0001;
   rlimit = 0.03;
+  isAggregate = false;
 }
 
 Body::Body():
   position(Datavector({0.0,0.0})),
   velocity(Datavector({0.0,0.0}))
 {
-  mass = -1.0;
+  mass = 0.0;
   index = -1;
   g = 0.0001;
   rlimit = 0.03;
+  isAggregate = false;
 }
 
 Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass):
@@ -20,6 +22,18 @@ Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass)
   velocity(_velocity),
   mass(_mass),
   index(_index)
+{
+  g = 0.0001;
+  rlimit = 0.03;
+  isAggregate = false;
+}
+
+Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass, bool _aggregate):
+  position(_position),
+  velocity(_velocity),
+  mass(_mass),
+  index(_index),
+  isAggregate(_aggregate)
 {
   g = 0.0001;
   rlimit = 0.03;
@@ -69,3 +83,19 @@ double Body::getMass()
   return mass;
 }
 
+void Body::setMass(double _mass)
+{
+  mass = _mass;
+}
+
+void Body::setPosition(std::vector<double> _position)
+{
+  position = *(new Datavector(_position));
+  //position(Datavector(_position));
+}
+
+void Body::makeAggregate()
+{
+  isAggregate = true;
+  index = -1;
+}

@@ -21,7 +21,7 @@ std::vector<Body> BodyFileReader::readBodies() {
         std::cerr << "Error: Failed to read the number of bodies from " << filename << std::endl;
         return bodies;
     }
-    bodies.reserve(numBodies);
+    bodies.resize(numBodies);
 
     for (int i = 0; i < numBodies; ++i) {
         int index;
@@ -35,7 +35,7 @@ std::vector<Body> BodyFileReader::readBodies() {
         Datavector position({posX, posY});
         Datavector velocity({velX, velY});
         Body body(index,position, velocity, mass);
-        bodies.push_back(body);
+        bodies[index] = body;
     }
 
     return bodies;

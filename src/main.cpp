@@ -14,8 +14,12 @@
 #include "bodyfilereader.h"
 #include "bodyfilewriter.h"
 #include "argparse.h"
+#include "quad.h"
+#include "bhtree.h"
 
 using namespace std;
+
+
 
 int main(int argc, char **argv) {
   // Parse args
@@ -29,9 +33,21 @@ int main(int argc, char **argv) {
   BodyFileReader bodyReader(in_file);
   vector<Body> bodies = bodyReader.readBodies();
 
+  Quad test_quad(0.0,0.0,4.0);
+  BHTree test_tree(test_quad);
   for(Body b: bodies) {
-    cout << b << endl;
+    /*
+    cout << b;
+    if (test_quad.contains(b)) {
+      cout << ", body in quad";
+    }
+    cout << endl;
+    */
+    test_tree.insert(b);
+    //cout << test_tree << endl;
   }
+  cout << test_tree << endl;
+
 
   BodyFileWriter bodyWriter(out_file);
   bodyWriter.writeBodies(bodies);
