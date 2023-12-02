@@ -17,6 +17,7 @@ class Datavector
     Datavector(std::vector<double> _data);
     Datavector(int _n, double _data[]);
     int size();
+    
     double dot(Datavector* other);
     double magnitude();
     double distanceTo(Datavector* other);
