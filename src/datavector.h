@@ -8,9 +8,9 @@
 class Datavector
 {
   private:
+  public:
     int n{};
     std::vector<double> data;
-  public:
     Datavector(const Datavector& other);
     //Datavector(Datavector& other);
     Datavector(Datavector* other);

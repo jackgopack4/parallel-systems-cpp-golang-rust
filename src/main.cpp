@@ -41,6 +41,7 @@ int main(int argc, char **argv) {
   {
     cout<< "starting run " << i << endl;
     vector<Datavector> forces(bodies.size());
+    cout << "datavec size: " << sizeof(forces[0]) << endl;
     //cout << "allocated new forces datavector" << endl;
     Quad test_quad(0.0,0.0,4.0);
     BHTree test_tree(test_quad);
@@ -63,10 +64,13 @@ int main(int argc, char **argv) {
       test_tree.insert(b);
       //cout << test_tree << endl;
     }
-    cout << test_tree << endl;
+    //cout << test_tree << endl;
     cout << "finished tree build\n";
     for(Body b: bodies) {
       int idx = b.getIndex();
+      if(idx%1000 == 0) {
+        cout << "calculating force for idx " << idx <<endl;
+      }
       if (b.getMass() > 0.0) {
         //cout << "updating mass for body idx " << idx << endl;
         Datavector new_force = test_tree.calculateForce(b,opts.theta);
@@ -78,7 +82,7 @@ int main(int argc, char **argv) {
       }
       
     }
-
+    cout << "finished force calculations\n";
     for(auto j=0;j<(int)bodies.size();++j) {
       //int idx = bodies[i].getIndex();
       //Body b = bodies[i];

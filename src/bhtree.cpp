@@ -9,14 +9,14 @@ BHTree::BHTree() : body(), quad(Quad(0.0, 0.0, 4.0)), NW(nullptr), NE(nullptr), 
 /*
 void BHTree::DestroyRecursive(std::shared_ptr<BHTree> ptr)
 {
-    if (ptr)
-    {
-        DestroyRecursive((*ptr).NW);
-        DestroyRecursive((*ptr).NE);
-        DestroyRecursive((*ptr).SW);
-        DestroyRecursive((*ptr).SE);
-        delete ptr;
-    }
+  if (ptr)
+  {
+    DestroyRecursive((*ptr).NW);
+    DestroyRecursive((*ptr).NE);
+    DestroyRecursive((*ptr).SW);
+    DestroyRecursive((*ptr).SE);
+    ptr = nullptr;
+  }
 }
 
 BHTree::~BHTree()
@@ -42,7 +42,7 @@ BHTree::~BHTree()
 void BHTree::insert(Body& b)
 {
   // If the node is empty, insert the body here
-  if (body.getMass() == 0.0) 
+  if (body.mass == 0.0) 
   {
     body = b;
     return;
@@ -59,10 +59,10 @@ void BHTree::insert(Body& b)
 
 void BHTree::split()
 {
-  double newWidth = quad.getWidth() / 2.0;
-  double newHeight = quad.getHeight() / 2.0;
-  double curMinX = quad.getMinX();
-  double curMinY = quad.getMinY();
+  double newWidth = quad.width / 2.0;
+  double newHeight = quad.height / 2.0;
+  double curMinX = quad.minX;
+  double curMinY = quad.minY;
   Quad sw_quad(curMinX,curMinY,newWidth,newHeight);
   SW = std::make_shared<BHTree>(sw_quad);
   Quad nw_quad(curMinX,curMinY+newHeight,newWidth,newHeight);
@@ -78,14 +78,14 @@ void BHTree::split()
 
 void BHTree::updateAggregateBody()
 {
-  double totalMass = (*NW).body.getMass() + (*NE).body.getMass() + (*SW).body.getMass() + (*SE).body.getMass();
+  double totalMass = (*NW).body.mass + (*NE).body.mass + (*SW).body.mass + (*SE).body.mass;
 
   if (totalMass > 0.0) {
-    double weightedX = (*NW).body.getPosition().cartesian(0) * (*NW).body.getMass() + (*NE).body.getPosition().cartesian(0) * (*NE).body.getMass()
-                      + (*SW).body.getPosition().cartesian(0) * (*SW).body.getMass() + (*SE).body.getPosition().cartesian(0) * (*SE).body.getMass();
+    double weightedX = (*NW).body.position.data[0] * (*NW).body.mass + (*NE).body.position.data[0] * (*NE).body.mass
+                      + (*SW).body.position.data[0] * (*SW).body.mass + (*SE).body.position.data[0] * (*SE).body.mass;
 
-    double weightedY = (*NW).body.getPosition().cartesian(1) * (*NW).body.getMass() + (*NE).body.getPosition().cartesian(1) * (*NE).body.getMass()
-                      + (*SW).body.getPosition().cartesian(1) * (*SW).body.getMass() + (*SE).body.getPosition().cartesian(1) * (*SE).body.getMass();
+    double weightedY = (*NW).body.position.data[1] * (*NW).body.mass + (*NE).body.position.data[1] * (*NE).body.mass
+                      + (*SW).body.position.data[1] * (*SW).body.mass + (*SE).body.position.data[1] * (*SE).body.mass;
 
     double centerX = weightedX / totalMass;
     double centerY = weightedY / totalMass;
@@ -110,8 +110,8 @@ void BHTree::moveExistingBody() {
 
     //isAggregate = true;
     //body(-1,{centerX,centerY},totalMass,true);
-    //body.getPosition().x = centerX;
-    //body.getPosition().y = centerY;
+    //body.position.x = centerX;
+    //body.position.y = centerY;
     //body.setMass(totalMass);
 }
 
@@ -119,17 +119,17 @@ void BHTree::moveExistingBody() {
 // Helper function to insert a body into the appropriate quadrant
 void BHTree::insertIntoQuadrant(Body& b) 
 {
-  double midX = quad.getMinX() + quad.getWidth() / 2.0;
-  double midY = quad.getMinY() + quad.getHeight() / 2.0;
+  double midX = quad.getMinX() + quad.width / 2.0;
+  double midY = quad.getMinY() + quad.height / 2.0;
 
-  if (b.getPosition().cartesian(0) <= midX) {
-    if (b.getPosition().cartesian(1) <= midY) {
+  if (b.position.data[0] <= midX) {
+    if (b.position.data[1] <= midY) {
       (*SW).insert(b);
     } else {
       (*NW).insert(b);
     }
   } else {
-    if (b.getPosition().cartesian(1) <= midY) {
+    if (b.position.data[1] <= midY) {
       (*SE).insert(b);
     } else {
       (*NE).insert(b);
@@ -151,27 +151,27 @@ void BHTree::printTree(int indent,std::ostream &os, std::string_view quadrant) {
 
   os << body << "\n";
 
-  if (NW != nullptr && (*NW).body.getMass() > 0.0) {
+  if (NW != nullptr && (*NW).body.mass > 0.0) {
     (*NW).printTree(indent + 1, os, "NW");
   }
 
-  if (NE != nullptr && (*NE).body.getMass() > 0.0) {
+  if (NE != nullptr && (*NE).body.mass > 0.0) {
     (*NE).printTree(indent + 1, os, "NE");
   }
 
-  if (SW != nullptr && (*SW).body.getMass() > 0.0) {
+  if (SW != nullptr && (*SW).body.mass > 0.0) {
     (*SW).printTree(indent + 1, os, "SW");
   }
 
-  if (SE != nullptr && (*SE).body.getMass() > 0.0) {
+  if (SE != nullptr && (*SE).body.mass > 0.0) {
     (*SE).printTree(indent + 1, os, "SE");
   }
 }
 
 void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
-  if (body.getIndex() != -1) {
+  if (body.index != -1) {
     // Update the corresponding entry in the vector
-    bodies[body.getIndex()] = body;
+    bodies[body.index] = body;
   }
 
   if (NW != nullptr) {
@@ -193,13 +193,13 @@ void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
 
 Datavector BHTree::calculateForce(Body& b, double theta) {
     // If the node is an external node (and it is not body b), calculate the force exerted by the current node on b
-    if (body.getIndex() != -1 && b != body) {
+    if (body.index != -1 && b != body) {
         return b.forceFrom(body);  // Use forceFrom function from Body class
     }
 
     // Otherwise, calculate the ratio s / d
-    double s = quad.getWidth();
-    double d = b.getPosition().minus(body.getPosition()).magnitude();
+    double s = quad.width;
+    double d = b.position.minus(body.position).magnitude();
 
     // If s / d is less than a certain threshold (theta), treat this internal node as a single body
     if (s / d < theta) {

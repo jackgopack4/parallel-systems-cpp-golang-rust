@@ -5,12 +5,12 @@
 
 class Quad {
 private:
+
+public:
   double minX;
   double minY;
   double width;
   double height;
-
-public:
   // Constructor
   Quad(double _minX, double _minY, double _width);
   Quad(double _minX, double _minY, double _width, double _height);
@@ -20,7 +20,6 @@ public:
   double getMinY() const;
   double getWidth() const;
   double getHeight() const;
-  bool isSquare() const;
 
   // Function to check if a Body is inside the Quad
   bool contains(Body& body) const;

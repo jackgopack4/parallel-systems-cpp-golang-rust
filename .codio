@@ -2,5 +2,5 @@
     "preview": {
         "Virtual Desktop": "https://{{domain3000}}/"
     },
-  "debugger": [{"type":"GDB","command":"./bin/nbody -i input/nb-100000.txt  -o output/nb-100000-out.txt -t 0.5 -d 0.005 -s 100","before":"","uuid":"b780b4c9-bcae-6534-25b1-4afb1712721b","name":"quadtree_100000"},{"type":"GDB","command":"./bin/nbody -i input/nb-5.txt  -o output/tmp_seq.txt   -t 0.5 -d 0.005 -s 2","before":"","uuid":"f9218d81-a0fb-200e-6936-e1f69d143707","name":"quadtree"}]
+  "debugger": [{"type":"GDB","command":"./bin/nbody -i input/nb-5.txt  -o output/tmp_seq.txt   -t 0.5 -d 0.005 -s 2","before":"","uuid":"f9218d81-a0fb-200e-6936-e1f69d143707","name":"quadtree"},{"type":"GDB","command":"./bin/nbody -i input/nb-100000.txt  -o output/nb-100000-out.txt -t 0.5 -d 0.005 -s 2","before":"","uuid":"b780b4c9-bcae-6534-25b1-4afb1712721b","name":"quadtree_100000"}]
 }

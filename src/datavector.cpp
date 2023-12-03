@@ -15,32 +15,15 @@ void Datavector::clear() {
   data.clear();
 }
 
-Datavector::Datavector(int _n) 
+Datavector::Datavector(int _n): n(_n)
 {
-  n = _n;
-  data.reserve(_n);
-  for(auto i=0;i<n;++i) {
-    data.push_back(0.0);
-  }
+  std::vector<double> vector2(_n, 0.0);
+  data = vector2;
 }
 
-Datavector::Datavector(std::vector<double> _data) 
-{
-  n = _data.size();
-  data.reserve(n);
-  for (double d: _data) {
-    data.push_back(d);
-  }
-}
+Datavector::Datavector(std::vector<double> _data): n((int) _data.size()), data(_data) {}
 
-Datavector::Datavector(int _n, double _data[])
-{
-  n = _n;
-  data.reserve(n);
-  for (auto i=0;i<n;++i) {
-    data.push_back(_data[i]);
-  }
-}
+Datavector::Datavector(int _n, double _data[]): n(_n), data(_data,_data+_n){}
 
 int Datavector::size() 
 {
@@ -70,7 +53,8 @@ double Datavector::magnitude()
 
 double Datavector::distanceTo(Datavector& other) 
 {
-  return minus(other).magnitude();
+  Datavector tmp = minus(other);
+  return tmp.magnitude();
 }
 
 Datavector Datavector::plus(Datavector& other) 

@@ -28,17 +28,6 @@ double Quad::getHeight() const
   return height;
 }
 
-bool Quad::isSquare() const 
-{
-  if(height == width) 
-  {
-    return true;
-  } else 
-  {
-    return false;
-  }
-}
-
 // Function to check if a Body is inside the Quad
 bool Quad::contains(Body& body) const {
   Datavector bodyPos = body.getPosition();
