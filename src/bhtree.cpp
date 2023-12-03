@@ -18,6 +18,8 @@ void BHTree::insert(Body& b)
   if(NW == nullptr)
   {
     split();
+  }
+  if (!body.checkAggregate()) {
     moveExistingBody();
   }
   insertIntoQuadrant(b);
@@ -33,21 +35,13 @@ void BHTree::split()
   NW = new BHTree(*(new Quad(curMinX,curMinY+newHeight,newWidth,newHeight)));
   SE = new BHTree(*(new Quad(curMinX+newWidth,curMinY,newWidth,newHeight)));
   NE = new BHTree(*(new Quad(curMinX+newWidth,curMinY+newHeight,newWidth,newHeight)));
-
+  //moveExistingBody();
   //insertIntoQuadrant(body);
 
 }
 
-// Helper function to move the existing body to the appropriate quadrant and update aggregate information
-void BHTree::moveExistingBody() {
-  if (NW == nullptr) {
-    // This is a leaf node, no need to move the existing body
-    return;
-  }
-  insertIntoQuadrant(body);
-
-  // Calculate the aggregate body information
-
+void BHTree::updateAggregateBody()
+{
   double totalMass = NW->body.getMass() + NE->body.getMass() + SW->body.getMass() + SE->body.getMass();
 
   if (totalMass > 0.0) {
@@ -64,19 +58,33 @@ void BHTree::moveExistingBody() {
     body.setPosition({centerX,centerY});
     body.setMass(totalMass);
     body.makeAggregate();
+  }
+}
+
+// Helper function to move the existing body to the appropriate quadrant and update aggregate information
+void BHTree::moveExistingBody() {
+  if (NW == nullptr) {
+    // This is a leaf node, no need to move the existing body
+    return;
+  }
+  insertIntoQuadrant(body);
+
+  // Calculate the aggregate body information
+
+
     //isAggregate = true;
     //body(-1,{centerX,centerY},totalMass,true);
     //body.getPosition().x = centerX;
     //body.getPosition().y = centerY;
     //body.setMass(totalMass);
-  }
 }
+
 
 // Helper function to insert a body into the appropriate quadrant
 void BHTree::insertIntoQuadrant(Body& b) 
 {
   double midX = quad.getMinX() + quad.getWidth() / 2.0;
-  double midY = quad.getMinY() + quad.getWidth() / 2.0;
+  double midY = quad.getMinY() + quad.getHeight() / 2.0;
 
   if (b.getPosition().cartesian(0) <= midX) {
     if (b.getPosition().cartesian(1) <= midY) {
@@ -91,14 +99,15 @@ void BHTree::insertIntoQuadrant(Body& b)
       NE->insert(b);
     }
   }
+  updateAggregateBody();
 }
 
-void BHTree::printTree(int indent,std::ostream &os) {
+void BHTree::printTree(int indent,std::ostream &os, std::string_view quadrant) {
   for (int i = 0; i < indent; ++i) {
     os << "  ";  // Two spaces per level of indentation
   }
 
-  os << "Level "<< indent << " Node Contents:\n";
+  os << "Level "<< indent << " " << quadrant << " node:\n";
 
   for (int i = 0; i < indent + 1; ++i) {
     os << "  ";  // Two spaces per level of indentation
@@ -107,19 +116,19 @@ void BHTree::printTree(int indent,std::ostream &os) {
   os << body << "\n";
 
   if (NW != nullptr && NW->body.getMass() > 0.0) {
-    NW->printTree(indent + 1, os);
+    NW->printTree(indent + 1, os, "NW");
   }
 
   if (NE != nullptr && NE->body.getMass() > 0.0) {
-    NE->printTree(indent + 1, os);
+    NE->printTree(indent + 1, os, "NE");
   }
 
   if (SW != nullptr && SW->body.getMass() > 0.0) {
-    SW->printTree(indent + 1, os);
+    SW->printTree(indent + 1, os, "SW");
   }
 
   if (SE != nullptr && SE->body.getMass() > 0.0) {
-    SE->printTree(indent + 1, os);
+    SE->printTree(indent + 1, os, "SE");
   }
 }
 

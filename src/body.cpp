@@ -109,3 +109,8 @@ bool Body::operator!=(Body& other)
 {
   return !(*this == other);
 }
+
+bool Body::checkAggregate()
+{
+  return isAggregate;
+}

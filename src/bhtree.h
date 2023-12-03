@@ -1,8 +1,10 @@
 #ifndef BHTREE_H
 #define BHTREE_H
-
+#include <vector>
+#include <iostream>
+#include <string>
 #include "quad.h"
-
+#include <string_view>
 class BHTree {
 private:
   Body body;     // body or aggregate body stored in this node
@@ -13,8 +15,8 @@ private:
   BHTree* SE;     // tree representing southeast quadrant
   void split();
   void moveExistingBody();
-  void printTree(int indent, std::ostream &os);
-
+  void printTree(int indent, std::ostream &os, std::string_view quadrant);
+  void updateAggregateBody();
 public:
   // Constructor
   BHTree(Body& _body, Quad& _quad, BHTree& _NW, BHTree& _NE, BHTree& _SW, BHTree& _SE);
@@ -27,7 +29,7 @@ public:
   void updateVectorWithBodies(std::vector<Body>& bodies);
   friend std::ostream& operator << (std::ostream &os, BHTree &bht)
   {
-    bht.printTree(0,os);
+    bht.printTree(0,os,"root");
     return os;
   }
 };

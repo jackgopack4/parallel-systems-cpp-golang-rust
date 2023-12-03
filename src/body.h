@@ -33,8 +33,10 @@ class Body
     void setMass(double _mass);
     void setPosition(std::vector<double> _position);
     void makeAggregate();
+    bool checkAggregate();
     bool operator==(Body& other);
     bool operator!=(Body& other);
+
     friend std::ostream& operator << (std::ostream &os, Body &b)
     {
       if (b.isAggregate) 
@@ -44,7 +46,7 @@ class Body
       {
         os << "Body["<< b.index << "] - ";
       }
-      os << "position:  " << b.position << ", velocity: " << b.velocity << ", mass " << b.mass;
+      os << "position " << b.position << ", velocity " << b.velocity << ", mass " << b.mass;
       return os;
     }
 };
