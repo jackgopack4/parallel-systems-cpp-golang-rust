@@ -2,10 +2,17 @@
 
 Datavector::Datavector(const Datavector& other) : n(other.n), data(other.data) {}
 
+//Datavector::Datavector(Datavector& other) : n(other.n), data(other.data) {}
+
+Datavector::Datavector() : n(2), data({0.0,0.0}) {}
+
 Datavector::Datavector(int _n) 
 {
   n = _n;
   data.reserve(_n);
+  for(auto i=0;i<n;++i) {
+    data.push_back(0.0);
+  }
 }
 
 Datavector::Datavector(std::vector<double> _data) 

@@ -12,10 +12,13 @@ class Datavector
     std::vector<double> data;
   public:
     Datavector(const Datavector& other);
+    //Datavector(Datavector& other);
+    Datavector(Datavector* other);
     //Datavector(Datavector& _d);
     Datavector(int _n);
     Datavector(std::vector<double> _data);
     Datavector(int _n, double _data[]);
+    Datavector();
     int size();
     
     double dot(Datavector* other);

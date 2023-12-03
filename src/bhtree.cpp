@@ -154,3 +154,48 @@ void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
     SE->updateVectorWithBodies(bodies);
   }
 }
+
+Datavector* BHTree::calculateForce(Body& b, double theta) {
+    // If the node is an external node (and it is not body b), calculate the force exerted by the current node on b
+    if (body.getIndex() != -1 && b != body) {
+        return b.forceFrom(&body);  // Use forceFrom function from Body class
+    }
+
+    // Otherwise, calculate the ratio s / d
+    double s = quad.getWidth();
+    double d = b.getPosition().minus(&(body.getPosition()))->magnitude();
+
+    // If s / d is less than a certain threshold (theta), treat this internal node as a single body
+    if (s / d < theta) {
+        return b.forceFrom(&body);  // Use forceFrom function from Body class
+    }
+
+    // Otherwise, run the procedure recursively on each of the current node's children
+    Datavector* totalForce = new Datavector();
+
+    if (NW != nullptr) {
+        Datavector* forceFromNW = NW->calculateForce(b,theta);
+        totalForce = totalForce->plus(forceFromNW);
+        delete forceFromNW;
+    }
+
+    if (NE != nullptr) {
+        Datavector* forceFromNE = NE->calculateForce(b,theta);
+        totalForce = totalForce->plus(forceFromNE);
+        delete forceFromNE;
+    }
+
+    if (SW != nullptr) {
+        Datavector* forceFromSW = SW->calculateForce(b,theta);
+        totalForce = totalForce->plus(forceFromSW);
+        delete forceFromSW;
+    }
+
+    if (SE != nullptr) {
+        Datavector* forceFromSE = SE->calculateForce(b,theta);
+        totalForce = totalForce->plus(forceFromSE);
+        delete forceFromSE;
+    }
+
+    return totalForce;
+}

@@ -48,6 +48,11 @@ void Body::move(Datavector* force, double dt)
   Datavector* a = force->scale(1/mass);
   velocity = *(velocity.plus(a->scale(dt)));
   position = *(position.plus(velocity.scale(dt)));
+  if(position.cartesian(0) <= 0.0 || position.cartesian(0) >= 4.0
+    || position.cartesian(1) <= 0.0 || position.cartesian(1) >= 4.0) 
+  {
+      mass = -1.0;
+  }
 }
 
 Datavector* Body::forceFrom(Body* b)
@@ -102,7 +107,7 @@ void Body::makeAggregate()
 
 bool Body::operator==(Body& other)
 {
-  return position == other.getPosition() && velocity == other.getVelocity();
+  return position == other.getPosition() && mass == other.getMass();
 }
 
 bool Body::operator!=(Body& other)

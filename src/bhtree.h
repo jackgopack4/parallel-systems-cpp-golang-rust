@@ -27,6 +27,7 @@ public:
   void insert(Body& b);
   void insertIntoQuadrant(Body& b);
   void updateVectorWithBodies(std::vector<Body>& bodies);
+  Datavector* calculateForce(Body& b, double theta);
   friend std::ostream& operator << (std::ostream &os, BHTree &bht)
   {
     bht.printTree(0,os,"root");

@@ -22,7 +22,7 @@ std::vector<Body> BodyFileReader::readBodies() {
         return bodies;
     }
     bodies.resize(numBodies);
-
+    //std::cout << "resized bodies\n";
     for (int i = 0; i < numBodies; ++i) {
         int index;
         double posX, posY, mass, velX, velY;
