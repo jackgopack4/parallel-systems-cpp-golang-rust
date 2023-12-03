@@ -73,7 +73,7 @@ Datavector* Datavector::minus(Datavector* other)
   Datavector* diff = new Datavector(n);
   for(auto i=0; i<n; ++i) 
   {
-    diff->data[i] = data[i] + other->data[i];
+    diff->data[i] = data[i] - other->data[i];
   }
   return diff;
 }

@@ -46,8 +46,32 @@ Body::Body(int _index, Datavector& initialPosition, Datavector& initialVelocity,
 void Body::move(Datavector* force, double dt)
 {
   Datavector* a = force->scale(1/mass);
-  velocity = *(velocity.plus(a->scale(dt)));
-  position = *(position.plus(velocity.scale(dt)));
+  //double ax = a->cartesian(0);
+  //double ay = a->cartesian(1);
+
+  Datavector* P_term2 = velocity.scale(dt);
+  double Vxdt = P_term2->cartesian(0);
+  double Vydt = P_term2->cartesian(1);
+
+  Datavector* P_term3 = a->scale(0.5*dt*dt);
+  double half_ax_dt2 = P_term3->cartesian(0);
+  double half_ay_dt2 = P_term3->cartesian(1);
+
+  Datavector* a_dt = a->scale(dt);
+  double axdt = a_dt->cartesian(0);
+  double aydt = a_dt->cartesian(1);
+
+  double px_prime = position.cartesian(0) + Vxdt + half_ax_dt2;
+  double py_prime = position.cartesian(1) + Vydt + half_ay_dt2;
+
+  double vx_prime = velocity.cartesian(0)+axdt;
+  double vy_prime = velocity.cartesian(1)+aydt;
+
+  position = *(new Datavector({px_prime,py_prime}));
+  velocity = *(new Datavector({vx_prime,vy_prime}));
+
+  //velocity = *(velocity.plus(a->scale(dt)));
+  //position = *(position.plus(velocity.scale(dt)));
   if(position.cartesian(0) <= 0.0 || position.cartesian(0) >= 4.0
     || position.cartesian(1) <= 0.0 || position.cartesian(1) >= 4.0) 
   {
@@ -59,13 +83,21 @@ Datavector* Body::forceFrom(Body* b)
 {
   //Body* a = this;
   Datavector* delta = b->position.minus(&(this->position));
+  
   double dist = delta->magnitude();
+  double dx = delta->cartesian(0);
+  double dy = delta->cartesian(1);
+  double dist2 = dist;
   if (dist < rlimit)
   {
-    dist = rlimit;
+    dist2 = rlimit;
   }
-  double magnitude = (g * this->mass * b->mass) / (dist * dist);
-  return delta->direction()->scale(magnitude);
+  double Fx = (g * this->mass * b->mass * dx) / (dist*dist2*dist2);
+  double Fy = (g * this->mass * b->mass * dy) / (dist*dist2*dist2);
+
+  return new Datavector({Fx,Fy});
+  //double magnitude = (g * this->mass * b->mass) / (dist * dist);
+  //return delta->direction()->scale(magnitude);
 }
 
 Datavector& Body::getPosition() 

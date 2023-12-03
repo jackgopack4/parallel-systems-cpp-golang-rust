@@ -72,6 +72,9 @@ int main(int argc, char **argv) {
         forces[idx] = *new_force;
         //cout << "updated mass idx " << idx << endl;
       }
+      else {
+        forces[idx] = Datavector();
+      }
       
     }
 
