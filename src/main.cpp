@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
   //int num_bodies{(int) bodies.size()};
   for (auto i = 0; i < opts.steps; ++i)
   {
+    cout<< "starting run " << i << endl;
     vector<Datavector> forces(bodies.size());
     //cout << "allocated new forces datavector" << endl;
     Quad test_quad(0.0,0.0,4.0);
@@ -62,14 +63,14 @@ int main(int argc, char **argv) {
       test_tree.insert(b);
       //cout << test_tree << endl;
     }
-    //cout << test_tree << endl;
-
+    cout << test_tree << endl;
+    cout << "finished tree build\n";
     for(Body b: bodies) {
       int idx = b.getIndex();
       if (b.getMass() > 0.0) {
         //cout << "updating mass for body idx " << idx << endl;
-        Datavector* new_force = test_tree.calculateForce(b,opts.theta);
-        forces[idx] = *new_force;
+        Datavector new_force = test_tree.calculateForce(b,opts.theta);
+        forces[idx] = new_force;
         //cout << "updated mass idx " << idx << endl;
       }
       else {
@@ -78,11 +79,12 @@ int main(int argc, char **argv) {
       
     }
 
-    for(auto i=0;i<(int)bodies.size();++i) {
+    for(auto j=0;j<(int)bodies.size();++j) {
       //int idx = bodies[i].getIndex();
       //Body b = bodies[i];
       //cout << "attempting to move mass body idx " << idx << endl;
-      bodies[i].move(&forces[i],opts.dt);
+      bodies[j].move(forces[j],opts.dt);
+      //delete &forces[j];
       //cout << "moved mass body idx " << idx << endl;
     }
     /*
@@ -99,6 +101,7 @@ int main(int argc, char **argv) {
       }
     }
     */
+
   }
 
   //test_tree.updateVectorWithBodies(bodies);

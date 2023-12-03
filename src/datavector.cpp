@@ -6,6 +6,15 @@ Datavector::Datavector(const Datavector& other) : n(other.n), data(other.data) {
 
 Datavector::Datavector() : n(2), data({0.0,0.0}) {}
 
+Datavector::~Datavector() 
+{
+  data.clear();
+}
+
+void Datavector::clear() {
+  data.clear();
+}
+
 Datavector::Datavector(int _n) 
 {
   n = _n;
@@ -27,6 +36,7 @@ Datavector::Datavector(std::vector<double> _data)
 Datavector::Datavector(int _n, double _data[])
 {
   n = _n;
+  data.reserve(n);
   for (auto i=0;i<n;++i) {
     data.push_back(_data[i]);
   }
@@ -37,44 +47,52 @@ int Datavector::size()
   return n;
 }
 
-double Datavector::dot(Datavector* other) 
+double Datavector::dot(Datavector& other) 
 {
   // not adding error checking, vectors all same size for this function
   double sum{0.0};
   for(auto i=0;i<n;++i) 
   {
-    sum += data[i] * other->data[i];
+    sum += (data[i] * other.data[i]);
   }
   return sum;
 }
 
 double Datavector::magnitude() 
 {
-  return std::sqrt(this->dot(this));
-}
-
-double Datavector::distanceTo(Datavector* other) 
-{
-  return this->minus(other)->magnitude();
-}
-
-Datavector* Datavector::plus(Datavector* other) 
-{
-  Datavector* sum = new Datavector(n);
-  for(auto i=0;i<n;++i) 
+  double sum{0.0};
+  for(auto i=0;i<n;++i)
   {
-    sum->data[i] = data[i] + other->data[i];
+    sum += data[i] * data[i];
   }
   return sum;
 }
 
-Datavector* Datavector::minus(Datavector* other) 
+double Datavector::distanceTo(Datavector& other) 
 {
-  Datavector* diff = new Datavector(n);
+  return minus(other).magnitude();
+}
+
+Datavector Datavector::plus(Datavector& other) 
+{
+  std::vector<double> sums(n);
+  for(auto i=0;i<n;++i) 
+  {
+    sums[i] = data[i] + other.cartesian(i);
+  }
+  Datavector sum = Datavector(sums);
+  return sum;
+}
+
+Datavector Datavector::minus(Datavector& other) 
+{
+  //Datavector diff(n);
+  std::vector<double> diffs(n);
   for(auto i=0; i<n; ++i) 
   {
-    diff->data[i] = data[i] - other->data[i];
+    diffs[i] = data[i] - other.cartesian(i);
   }
+  Datavector diff(diffs);
   return diff;
 }
 
@@ -83,19 +101,21 @@ double Datavector::cartesian(int i)
   return data[i];
 }
 
-Datavector* Datavector::scale(double factor) 
+Datavector Datavector::scale(double factor) 
 {
-  Datavector* scaled = new Datavector(n);
+  std::vector<double> scales(n);
   for (auto i=0;i<n;++i) 
   {
-    scaled->data[i] = factor * data[i];
+    scales[i] = factor * data[i];
   }
+
+  Datavector scaled(scales);
   return scaled;
 }
 
-Datavector* Datavector::direction() 
+Datavector Datavector::direction() 
 {
-  return this->scale(1.0 / this->magnitude());
+  return scale(1.0 / magnitude());
 }
 
 bool Datavector::operator==(Datavector& other)
