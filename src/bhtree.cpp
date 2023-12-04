@@ -34,7 +34,7 @@ void BHTree::insert(Body& b)
     auto b1_x = b.position.data[0];
     auto b1_y = b.position.data[1];
     auto dist = sqrt(pow((b1_x-b0_x),2)+pow((b1_y-b0_y),2));
-    if(dist < 0.0000000001) {
+    if(dist < 0.00001) {
       body.mass += b.mass;
       return;
     }
