@@ -30,12 +30,13 @@ public:
   void insert(Body& b);
   void insertIntoQuadrant(Body& b);
   void updateVectorWithBodies(std::vector<Body>& bodies);
-  Datavector* calculateForce(Body& b, double theta);
+  void calculateForce(Body& b, double theta, double* x_comp, double* y_comp);
   friend std::ostream& operator << (std::ostream &os, BHTree &bht)
   {
     bht.printTree(0,os,"root");
     return os;
   }
 };
-void forceFrom(double* x_comp, double* y_comp, Body& b0, Body& b1, double g);
+void forceFrom(double* x_comp, double* y_comp, Body& b0, Body& b1);
+void calculateForceHelper(BHTree* bht, Body& b1, double theta, double* x_comp, double* y_comp);
 #endif // BHTREE_H

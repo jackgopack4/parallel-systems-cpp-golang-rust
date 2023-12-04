@@ -45,46 +45,37 @@ Body::Body(int _index, Datavector& initialPosition, Datavector& initialVelocity,
 
 void Body::move(Datavector* force, double dt)
 {
-  Datavector* a = force->scale(1/mass);
-  //double ax = a->cartesian(0);
-  //double ay = a->cartesian(1);
+  double ax = force->data[0] / mass;
+  double ay = force->data[1] / mass;
 
-  Datavector* P_term2 = velocity.scale(dt);
-  double Vxdt = P_term2->cartesian(0);
-  double Vydt = P_term2->cartesian(1);
+  double Vxdt = velocity.data[0]*dt;
+  double Vydt = velocity.data[1]*dt;
 
-  Datavector* P_term3 = a->scale(0.5*dt*dt);
-  double half_ax_dt2 = P_term3->cartesian(0);
-  double half_ay_dt2 = P_term3->cartesian(1);
+  double half_ax_dt2 = 0.5*ax*pow(dt,2);
+  double half_ay_dt2 = 0.5*ay*pow(dt,2);
 
-  Datavector* a_dt = a->scale(dt);
-  double axdt = a_dt->cartesian(0);
-  double aydt = a_dt->cartesian(1);
+  double axdt = ax*dt;
+  double aydt = ay*dt;
 
-  double px_prime = position.cartesian(0) + Vxdt + half_ax_dt2;
-  double py_prime = position.cartesian(1) + Vydt + half_ay_dt2;
+  double px_prime = position.data[0] + Vxdt + half_ax_dt2;
+  double py_prime = position.data[1] + Vydt + half_ay_dt2;
 
-  double vx_prime = velocity.cartesian(0)+axdt;
-  double vy_prime = velocity.cartesian(1)+aydt;
+  double vx_prime = velocity.data[0]+axdt;
+  double vy_prime = velocity.data[1]+aydt;
 
-  Datavector* new_pos = new Datavector({px_prime,py_prime});
-  position = *(new_pos);
-  delete new_pos;
-  Datavector* new_vel = new Datavector({vx_prime,vy_prime});
-  velocity = *(new_vel);
-  delete new_vel;
+  position.data[0] = px_prime;
+  position.data[1] = py_prime;
+
+  velocity.data[0] = vx_prime;
+  velocity.data[1] = vy_prime;
 
   //velocity = *(velocity.plus(a->scale(dt)));
   //position = *(position.plus(velocity.scale(dt)));
-  if(position.cartesian(0) <= 0.0 || position.cartesian(0) >= 4.0
-    || position.cartesian(1) <= 0.0 || position.cartesian(1) >= 4.0) 
+  if(position.data[0] <= 0.0 || position.data[0] >= 4.0
+    || position.data[1] <= 0.0 || position.data[1] >= 4.0) 
   {
       mass = -1.0;
   }
-  delete a;
-  delete P_term2;
-  delete P_term3;
-  delete a_dt;
 }
 
 Datavector* Body::forceFrom(Body* b)
@@ -93,8 +84,8 @@ Datavector* Body::forceFrom(Body* b)
   Datavector* delta = b->position.minus(&(this->position));
   
   double dist = delta->magnitude();
-  double dx = delta->cartesian(0);
-  double dy = delta->cartesian(1);
+  double dx = delta->data[0];
+  double dy = delta->data[1];
   delete delta;
   double dist2 = dist;
   if (dist < rlimit)

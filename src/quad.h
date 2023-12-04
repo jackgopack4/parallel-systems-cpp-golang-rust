@@ -5,12 +5,12 @@
 
 class Quad {
 private:
+
+public:
   double minX;
   double minY;
   double width;
   double height;
-
-public:
   // Constructor
   Quad(double _minX, double _minY, double _width);
   Quad(double _minX, double _minY, double _width, double _height);
