@@ -4,7 +4,7 @@ INC = ./src/
 OPTS = -std=c++17 -Wall -Werror -Wextra -O3 -lmpi
 
 
-EXEC = bin/nbody
+EXEC = nbody
 
 all: clean compile
 
