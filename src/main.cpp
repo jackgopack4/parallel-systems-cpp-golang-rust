@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
 
     
     for (auto i = 0; i < opts.steps; ++i) {
-      //clock_t lap_start_time = clock();
+      clock_t lap_start_time = clock();
       //cout << "starting run " << i << endl;
       vector<Datavector> forces(bodies.size());
       //cout << "allocated new forces datavector" << endl;
@@ -275,13 +275,13 @@ int main(int argc, char **argv) {
       delete[] dataRx;
       delete[] dataTx;
       forces.clear();
-      //clock_t lap_time = clock();
-      //double elapsed_lap_time = (double)(lap_time - lap_start_time) / CLOCKS_PER_SEC;
+      clock_t lap_time = clock();
+      double elapsed_lap_time = (double)(lap_time - lap_start_time) / CLOCKS_PER_SEC;
       //cout << "Elapsed time for cycle "<< i <<": " << elapsed_lap_time << "seconds\n";
       MPI_Barrier(MPI_COMM_WORLD);
       
       if(rank == 0 && num_bodies > 10000) {
-        //cout << elapsed_lap_time << endl;
+        cout << elapsed_lap_time << endl;
       }
       
       //delete data;
