@@ -164,19 +164,38 @@ void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
   }
 }
 
+void forceFrom(double* x_comp, double* y_comp, Body& b0, Body& b1, double g) {
+  auto dx = b0.position.cartesian(0)-b1.position.cartesian(0);
+  auto dy = b0.position.cartesian(1)-b1.position.cartesian(1);
+  double dist = sqrt(pow(dx,2)+pow(dy,2));
+  double dist2 = dist;
+  if (dist < b0.rlimit) dist2 = b0.rlimit;
+  double Fx = (g * b1.mass*b0.mass*dx) / (dist*pow(dist2,2));
+  double Fy = (g * b1.mass*b0.mass*dy) / (dist*pow(dist2,2));
+  (*x_comp) = Fx;
+  (*y_comp) = Fy;
+}
+
 void calculateForceHelper(BHTree* bht, Body& b0, Body& b1, double theta, Datavector* totalForce) {
-  
+  if (b0.mass <= 0.0000000001) return;
   double s = bht->quad.getWidth();
-  auto b1_pos = b1.getPosition();
-  auto b0_pos = b0.getPosition();
-  auto tmp_diff = b1_pos.minus(&b0_pos);
-  double d = tmp_diff->magnitude();
-  delete tmp_diff;
+  auto b1_x = b1.position.cartesian(0);
+  auto b1_y = b1.position.cartesian(1);
+  auto b0_x = b0.position.cartesian(0);
+  auto b0_y = b0.position.cartesian(1);
+  auto diff_x = b1_x-b0_x;
+  auto diff_y = b1_y-b0_y;
+  double d = sqrt(pow(diff_x,2)+pow(diff_y,2));
   if(b1 == b0) return;
   if ((b0.getIndex() != -1) || s / d < theta) {
-    Datavector* tmp_forcefrom = b1.forceFrom(&b0);
-    totalForce->plusEquals(tmp_forcefrom);
-    delete tmp_forcefrom;
+    double x_comp;
+    double y_comp;
+    forceFrom(&x_comp,&y_comp,b0,b1,b0.g);
+    //Datavector* tmp_forcefrom = b1.forceFrom(&b0);
+    //totalForce->plusEquals(tmp_forcefrom);
+    totalForce->data[0]+=x_comp;
+    totalForce->data[1]+=y_comp;
+    //delete tmp_forcefrom;
     return;
   }
   if (bht->NW != nullptr) {

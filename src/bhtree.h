@@ -5,6 +5,8 @@
 #include <string>
 #include "quad.h"
 #include <string_view>
+#include <cmath>
+
 class BHTree {
 private:
   
@@ -35,5 +37,5 @@ public:
     return os;
   }
 };
-
+void forceFrom(double* x_comp, double* y_comp, Body& b0, Body& b1, double g);
 #endif // BHTREE_H

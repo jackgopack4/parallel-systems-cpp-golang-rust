@@ -150,7 +150,7 @@ void Body::makeAggregate()
 
 bool Body::operator==(Body& other)
 {
-  return position == other.getPosition() && mass == other.getMass();
+  return position == other.position && index == other.index;
 }
 
 bool Body::operator!=(Body& other)

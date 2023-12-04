@@ -9,6 +9,8 @@
 class Body 
 {
   private:
+  
+  public:
     Datavector position;
     Datavector velocity;
     double mass;
@@ -16,8 +18,6 @@ class Body
     double rlimit;
     int index;
     bool isAggregate;
-  
-  public:
     Body(const Body& other);
     Body();
     Body(int _index, Datavector& initialPosition, Datavector& initialVelocity, double initialMass, double gravity, double limit);
