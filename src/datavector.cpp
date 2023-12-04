@@ -1,7 +1,5 @@
 #include "datavector.h"
 
-Datavector::Datavector(const Datavector& other) : n(other.n), data(other.data) {}
-
 //Datavector::Datavector(Datavector& other) : n(other.n), data(other.data) {}
 
 Datavector::Datavector() : n(2), data({0.0,0.0}) {}

@@ -1,32 +1,24 @@
 #include "body.h"
 
-Body::Body(const Body& other) : position(other.position), velocity(other.velocity), mass(other.mass), index(other.index) {
-  g = 0.0001;
-  rlimit = 0.03;
-  isAggregate = false;
-}
-
 Body::Body():
   position(Datavector({0.0,0.0})),
-  velocity(Datavector({0.0,0.0}))
-{
-  mass = 0.0;
-  index = -1;
-  g = 0.0001;
-  rlimit = 0.03;
-  isAggregate = false;
-}
+  velocity(Datavector({0.0,0.0})),
+  mass(0.0),
+  g(0.0001),
+  rlimit(0.03),
+  index(-1),
+  isAggregate(false)
+{}
 
 Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass):
   position(_position),
   velocity(_velocity),
   mass(_mass),
-  index(_index)
-{
-  g = 0.0001;
-  rlimit = 0.03;
-  isAggregate = false;
-}
+  g(0.0001),
+  rlimit(0.03),
+  index(_index),
+  isAggregate(false)
+{}
 
 Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass, bool _aggregate):
   position(_position),

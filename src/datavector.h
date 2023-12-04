@@ -11,7 +11,7 @@ class Datavector
   public:
     int n{};
     std::vector<double> data;
-    Datavector(const Datavector& other);
+    //Datavector(const Datavector& other);
     //Datavector(Datavector& other);
     Datavector(Datavector* other);
     //Datavector(Datavector& _d);

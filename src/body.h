@@ -19,7 +19,7 @@ class Body
     double rlimit;
     int index;
     bool isAggregate;
-    Body(const Body& other);
+    //Body(const Body& other);
     Body();
     Body(int _index, Datavector& initialPosition, Datavector& initialVelocity, double initialMass, double gravity, double limit);
     Body(int _index, Datavector _position, Datavector _velocity, double _mass);

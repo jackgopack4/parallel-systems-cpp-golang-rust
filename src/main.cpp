@@ -1,3 +1,4 @@
+/*
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -5,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <GL/glu.h>
 #include <GL/glut.h>
+*/
 #include <iostream>
 #include <vector>
 #include <string>
