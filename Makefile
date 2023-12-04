@@ -1,7 +1,8 @@
-CC = g++ 
+CC = mpicxx
 SRCS = ./src/*.cpp
 INC = ./src/
-OPTS = -std=c++17 -Wall -Werror -Wextra -O3
+OPTS = -std=c++17 -Wall -Werror -Wextra -O3 -lmpi
+
 
 EXEC = bin/nbody
 
