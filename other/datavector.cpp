@@ -48,7 +48,7 @@ double Datavector::magnitude()
   {
     sum += data[i] * data[i];
   }
-  return sum;
+  return sqrt(sum);
 }
 
 double Datavector::distanceTo(Datavector& other) 

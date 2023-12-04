@@ -7,23 +7,28 @@ BHTree::BHTree(Quad& _quad) : body(), quad(_quad), NW(nullptr), NE(nullptr), SW(
 
 BHTree::BHTree() : body(), quad(Quad(0.0, 0.0, 4.0)), NW(nullptr), NE(nullptr), SW(nullptr), SE(nullptr) {}
 /*
-void BHTree::DestroyRecursive(std::shared_ptr<BHTree> ptr)
+void BHTree::DestroyRecursive(BHTree* ptr)
 {
   if (ptr)
   {
-    DestroyRecursive((*ptr).NW);
-    DestroyRecursive((*ptr).NE);
-    DestroyRecursive((*ptr).SW);
-    DestroyRecursive((*ptr).SE);
-    ptr = nullptr;
+    if(ptr->NW) {
+      DestroyRecursive(ptr->NW);
+      DestroyRecursive(ptr->NE);
+      DestroyRecursive(ptr->SW);
+      DestroyRecursive(ptr->SE);
+    }
+    delete ptr;
   }
 }
-
+*/
 BHTree::~BHTree()
 {
-    DestroyRecursive(shared_from_this());
+    delete NW;
+    delete NE;
+    delete SW;
+    delete SE;
 }
-*/
+
 /*
 BHTree::~BHTree()
 {
@@ -42,9 +47,14 @@ BHTree::~BHTree()
 void BHTree::insert(Body& b)
 {
   // If the node is empty, insert the body here
-  if (body.mass == 0.0) 
+  if (body.mass <= 0.0000000001) 
   {
-    body = b;
+    body.position_arr[0] = b.position_arr[0];
+    body.position_arr[1] = b.position_arr[1];
+    body.velocity_arr[0] = b.velocity_arr[0];
+    body.velocity_arr[1] = b.velocity_arr[1];
+    body.mass = b.mass;
+    body.index = b.index;
     return;
   }
   if(NW == nullptr)
@@ -64,13 +74,17 @@ void BHTree::split()
   double curMinX = quad.minX;
   double curMinY = quad.minY;
   Quad sw_quad(curMinX,curMinY,newWidth,newHeight);
-  SW = std::make_shared<BHTree>(sw_quad);
+  //SW = std::make_shared<BHTree>(sw_quad);
+  SW = new BHTree(sw_quad);
   Quad nw_quad(curMinX,curMinY+newHeight,newWidth,newHeight);
-  NW = std::make_shared<BHTree>(nw_quad);
+  //NW = std::make_shared<BHTree>(nw_quad);
+  NW = new BHTree(nw_quad);
   Quad se_quad(curMinX+newWidth,curMinY,newWidth,newHeight);
-  SE = std::make_shared<BHTree>(se_quad);
+  //SE = std::make_shared<BHTree>(se_quad);
+  SE = new BHTree(se_quad);
   Quad ne_quad(curMinX+newWidth,curMinY+newHeight,newWidth,newHeight);
-  NE = std::make_shared<BHTree>(ne_quad);
+  //NE = std::make_shared<BHTree>(ne_quad);
+  NE = new BHTree(ne_quad);
   //moveExistingBody();
   //insertIntoQuadrant(body);
 
@@ -81,28 +95,31 @@ void BHTree::updateAggregateBody()
   double totalMass = (*NW).body.mass + (*NE).body.mass + (*SW).body.mass + (*SE).body.mass;
 
   if (totalMass > 0.0) {
-    double weightedX = (*NW).body.position.data[0] * (*NW).body.mass + (*NE).body.position.data[0] * (*NE).body.mass
-                      + (*SW).body.position.data[0] * (*SW).body.mass + (*SE).body.position.data[0] * (*SE).body.mass;
+    double weightedX = (*NW).body.position_arr[0] * (*NW).body.mass + (*NE).body.position_arr[0] * (*NE).body.mass
+                      + (*SW).body.position_arr[0] * (*SW).body.mass + (*SE).body.position_arr[0] * (*SE).body.mass;
 
-    double weightedY = (*NW).body.position.data[1] * (*NW).body.mass + (*NE).body.position.data[1] * (*NE).body.mass
-                      + (*SW).body.position.data[1] * (*SW).body.mass + (*SE).body.position.data[1] * (*SE).body.mass;
+    double weightedY = (*NW).body.position_arr[1] * (*NW).body.mass + (*NE).body.position_arr[1] * (*NE).body.mass
+                      + (*SW).body.position_arr[1] * (*SW).body.mass + (*SE).body.position_arr[1] * (*SE).body.mass;
 
     double centerX = weightedX / totalMass;
     double centerY = weightedY / totalMass;
 
     // Update the aggregate body information in this node
-    body.setPosition({centerX,centerY});
-    body.setMass(totalMass);
+    //body.setPosition({centerX,centerY});
+    body.position_arr[0] = centerX;
+    body.position_arr[1] = centerY;
+    body.mass = totalMass;
+    //body.setMass(totalMass);
     body.makeAggregate();
   }
 }
 
 // Helper function to move the existing body to the appropriate quadrant and update aggregate information
 void BHTree::moveExistingBody() {
-  if (NW == nullptr) {
+  /*if (NW == nullptr) {
     // This is a leaf node, no need to move the existing body
     return;
-  }
+  }*/
   insertIntoQuadrant(body);
 
   // Calculate the aggregate body information
@@ -119,17 +136,17 @@ void BHTree::moveExistingBody() {
 // Helper function to insert a body into the appropriate quadrant
 void BHTree::insertIntoQuadrant(Body& b) 
 {
-  double midX = quad.getMinX() + quad.width / 2.0;
-  double midY = quad.getMinY() + quad.height / 2.0;
+  double midX = quad.minX + quad.width / 2.0;
+  double midY = quad.minY + quad.height / 2.0;
 
-  if (b.position.data[0] <= midX) {
-    if (b.position.data[1] <= midY) {
+  if (b.position_arr[0] <= midX) {
+    if (b.position_arr[1] <= midY) {
       (*SW).insert(b);
     } else {
       (*NW).insert(b);
     }
   } else {
-    if (b.position.data[1] <= midY) {
+    if (b.position_arr[1] <= midY) {
       (*SE).insert(b);
     } else {
       (*NE).insert(b);
@@ -168,29 +185,41 @@ void BHTree::printTree(int indent,std::ostream &os, std::string_view quadrant) {
   }
 }
 
-void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
+void BHTree::calculateForceArr(Body& b, double theta, double* force_arr)
+{ // Calculates the cumulative force on body b, passed in from main
+  if (body.index == b.index || body.mass <= 0.0 || b.mass <= 0.0) {
+    return;
+  }
   if (body.index != -1) {
-    // Update the corresponding entry in the vector
-    bodies[body.index] = body;
+    b.forceFromArr(b,body,force_arr);
+    //std::cout << "force on body["<<b.index<<"] after body["<<body.index<<"] acts:\n";
+    //std::cout << "[" << force_arr[0] << ", " << force_arr[1] << "]\n";
+    return;
   }
-
+  double s = quad.width;
+  double d = sqrt(
+      pow((b.position_arr[0]-body.position_arr[0]),2)
+      + pow((b.position_arr[1]-body.position_arr[1]),2));
+  if ((s / d) < theta) {
+    b.forceFromArr(b,body,force_arr);
+    //std::cout << "force on body["<<b.index<<"] after body["<<body.index<<"] acts:\n";
+    //std::cout << "[" << force_arr[0] << ", " << force_arr[1] << "]\n";
+    return;
+  }
   if (NW != nullptr) {
-    (*NW).updateVectorWithBodies(bodies);
+    NW->calculateForceArr(b,theta,force_arr);
   }
-
   if (NE != nullptr) {
-    (*NE).updateVectorWithBodies(bodies);
+    NE->calculateForceArr(b,theta,force_arr);
   }
-
   if (SW != nullptr) {
-    (*SW).updateVectorWithBodies(bodies);
+    SW->calculateForceArr(b,theta,force_arr);
   }
-
   if (SE != nullptr) {
-    (*SE).updateVectorWithBodies(bodies);
+    SE->calculateForceArr(b,theta,force_arr);
   }
 }
-
+/*
 Datavector BHTree::calculateForce(Body& b, double theta) {
     // If the node is an external node (and it is not body b), calculate the force exerted by the current node on b
     if (body.index != -1 && b != body) {
@@ -235,3 +264,4 @@ Datavector BHTree::calculateForce(Body& b, double theta) {
 
     return totalForce;
 }
+*/

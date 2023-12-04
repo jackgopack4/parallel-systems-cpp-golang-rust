@@ -36,15 +36,30 @@ int main(int argc, char **argv) {
 
   BodyFileReader bodyReader(in_file);
   vector<Body> bodies = bodyReader.readBodies();
+  for(auto b:bodies) {
+    cout << b << endl;
+  }
   //int num_bodies{(int) bodies.size()};
   for (auto i = 0; i < opts.steps; ++i)
   {
-    cout<< "starting run " << i << endl;
-    vector<Datavector> forces(bodies.size());
-    cout << "datavec size: " << sizeof(forces[0]) << endl;
+    //cout<< "starting run " << i << endl;
+    //vector<Datavector> forces(bodies.size());
+    vector<double*> force_arrs;
+    for(auto i=0;i<(int)bodies.size();++i) {
+      double* tmp_force = new double[2]{0.0, 0.0};
+
+        // Add the array to the vector
+      force_arrs.push_back(tmp_force);
+    }
+    /*
+    for(auto f: force_arrs) {
+      cout <<"pointer" << (void *)f << endl;
+    }
+    */
+    //cout << "datavec size: " << sizeof(forces[0]) << endl;
     //cout << "allocated new forces datavector" << endl;
     Quad test_quad(0.0,0.0,4.0);
-    BHTree test_tree(test_quad);
+    BHTree* test_tree = new BHTree(test_quad);
     //cout << "allocated new test_tree" << endl;
     // Steps for the loop - 
     // 1. build tree
@@ -61,11 +76,20 @@ int main(int argc, char **argv) {
       }
       cout << endl;
       */
-      test_tree.insert(b);
+      test_tree->insert(b);
       //cout << test_tree << endl;
     }
-    //cout << test_tree << endl;
-    cout << "finished tree build\n";
+    cout << *test_tree << endl;
+    //cout << "finished tree build\n";
+    for(auto j=0;j<(int)bodies.size();++j) {
+      //if(j % 10000 == 0) {
+        //cout << "calculating force for idx " << j <<endl;
+      //}
+      if (bodies[j].mass > 0.0) {
+        test_tree->calculateForceArr(bodies[j],opts.theta,force_arrs[j]);
+      }
+    }
+    /*
     for(Body b: bodies) {
       int idx = b.getIndex();
       if(idx%1000 == 0) {
@@ -73,27 +97,31 @@ int main(int argc, char **argv) {
       }
       if (b.getMass() > 0.0) {
         //cout << "updating mass for body idx " << idx << endl;
-        Datavector new_force = test_tree.calculateForce(b,opts.theta);
-        forces[idx] = new_force;
+        //Datavector new_force = test_tree.calculateForce(b,opts.theta);
+        test_tree.calculateForceArr(b,opts.theta,&(force_arrs[idx]));
+        //forces[idx] = new_force;
         //cout << "updated mass idx " << idx << endl;
-      }
-      else {
-        forces[idx] = Datavector();
       }
       
     }
-    cout << "finished force calculations\n";
+    */
+    //cout << "finished force calculations\n";
     for(auto j=0;j<(int)bodies.size();++j) {
       //int idx = bodies[i].getIndex();
       //Body b = bodies[i];
       //cout << "attempting to move mass body idx " << idx << endl;
-      bodies[j].move(forces[j],opts.dt);
+      //bodies[j].move(force_arrs[j],opts.dt);
+      positionAndVelocityUpdate(&bodies[j],force_arrs[j],opts.dt);
       //delete &forces[j];
       //cout << "moved mass body idx " << idx << endl;
     }
+
+    for(auto f: force_arrs) {
+      delete f;
+    }
+    delete test_tree;
     /*
     vector<Body> new_bodies(bodies.size());
-    test_tree.updateVectorWithBodies(new_bodies);
     int len_bodies{(int)bodies.size()};
     for(int i{0};i<len_bodies;++i) 
     {
@@ -108,7 +136,6 @@ int main(int argc, char **argv) {
 
   }
 
-  //test_tree.updateVectorWithBodies(bodies);
   BodyFileWriter bodyWriter(out_file);
   bodyWriter.writeBodies(bodies);
 

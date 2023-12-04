@@ -30,6 +30,6 @@ double Quad::getHeight() const
 
 // Function to check if a Body is inside the Quad
 bool Quad::contains(Body& body) const {
-  Datavector bodyPos = body.getPosition();
-  return (bodyPos.cartesian(0) >= minX && bodyPos.cartesian(0) <= minX + width && bodyPos.cartesian(1) >= minY && bodyPos.cartesian(1) <= minY + width);
+  //Datavector bodyPos = body.getPosition();
+  return (body.position_arr[0] >= minX && body.position_arr[0] <= minX + width && body.position_arr[1] >= minY && body.position_arr[1] <= minY + width);
 }
