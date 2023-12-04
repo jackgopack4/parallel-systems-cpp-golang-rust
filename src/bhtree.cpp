@@ -19,11 +19,7 @@ void BHTree::insert(Body& b)
   // If the node is empty, insert the body here
   if (body.mass == 0.0) 
   {
-    body.position.data[0] = b.position.data[0];
-    body.position.data[1] = b.position.data[1];
-    body.velocity.data[0] = b.velocity.data[0];
-    body.velocity.data[1] = b.velocity.data[1];
-    body.mass = b.mass;
+    body = b;
     return;
   }
   if(NW == nullptr)
