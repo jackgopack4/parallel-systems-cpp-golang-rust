@@ -1,7 +1,7 @@
 CC = g++ 
 SRCS = ./src/*.cpp
 INC = ./src/
-OPTS = -std=c++17 -Wall -Werror -Wextra -lpthread -O3
+OPTS = -std=c++17 -Wall -Werror -Wextra -O3
 
 EXEC = bin/nbody
 
@@ -11,7 +11,7 @@ compile:
 	$(CC) $(SRCS) $(OPTS) -I$(INC) -o $(EXEC)
 
 compile2:
-	$(CC) $(SRCS) -std=c++17 -Wall -Werror -lpthread -O -g3 -I$(INC) -o $(EXEC) 
+	$(CC) $(SRCS) -std=c++17 -Wall -Werror -O -g3 -I$(INC) -o $(EXEC) 
 clean:
 	rm -f $(EXEC)
 

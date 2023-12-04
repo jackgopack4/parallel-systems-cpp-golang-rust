@@ -12,6 +12,8 @@
 #include <string>
 #include <cstring>
 #include <sys/resource.h>
+#include <time.h>
+#include <iomanip>
 //#include "datavector.h"
 #include "body.h"
 #include "bodyfilereader.h"
@@ -25,25 +27,26 @@ using namespace std;
 
 
 int main(int argc, char **argv) {
-
-const rlim_t kStackSize = 128 * 1024 * 1024;   // min stack size = 16 MB
-struct rlimit rl;
-int result;
-
-result = getrlimit(RLIMIT_STACK, &rl);
-if (result == 0)
-{
-  if (rl.rlim_cur < kStackSize)
+  cout << fixed << setprecision(6);
+  /*
+  const rlim_t kStackSize = 256 * 1024 * 1024;   // min stack size = 16 MB
+  struct rlimit rl;
+  int result;
+  result = getrlimit(RLIMIT_STACK, &rl);
+  if (result == 0)
   {
-    rl.rlim_cur = kStackSize;
-    result = setrlimit(RLIMIT_STACK, &rl);
-    if (result != 0)
+    if (rl.rlim_cur < kStackSize)
     {
-        fprintf(stderr, "setrlimit returned result = %d\n", result);
+      rl.rlim_cur = kStackSize;
+      result = setrlimit(RLIMIT_STACK, &rl);
+      if (result != 0)
+      {
+        cerr << "setrlimit returned result = " << result << endl;
+        //fprintf(stderr, "setrlimit returned result = %d\n", result);
+      }
     }
   }
-}
-
+  */
 
   // Parse args
   struct options_t opts;
@@ -60,9 +63,12 @@ if (result == 0)
   BodyFileReader bodyReader(in_file);
   vector<Body> bodies = bodyReader.readBodies();
   //int num_bodies{(int) bodies.size()};
+  // record the start time
+  clock_t start_time = clock();
   for (auto i = 0; i < opts.steps; ++i)
   {
-    cout << "starting run " << i << endl;
+    clock_t lap_start_time = clock();
+    //cout << "starting run " << i << endl;
     vector<Datavector> forces(bodies.size());
     //cout << "allocated new forces datavector" << endl;
     Quad test_quad(0.0,0.0,4.0);
@@ -130,7 +136,21 @@ if (result == 0)
     }
     */
     delete test_tree;
+    forces.clear();
+    clock_t lap_time = clock();
+    double elapsed_lap_time = (double)(lap_time - lap_start_time) / CLOCKS_PER_SEC;
+    //cout << "Elapsed time for cycle "<< i <<": " << elapsed_lap_time << "seconds\n";
+    cout << elapsed_lap_time << endl;
   }
+  // Record the ending time
+  clock_t end_time = clock();
+
+  // Calculate the elapsed time in seconds
+  double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+  // Print the elapsed time
+  //cout << "Elapsed time: " << elapsed_time << " seconds\n";
+  cout << elapsed_time << endl;
 
   //test_tree->updateVectorWithBodies(bodies);
   BodyFileWriter bodyWriter(out_file);
