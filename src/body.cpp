@@ -81,6 +81,10 @@ void Body::move(Datavector* force, double dt)
   {
       mass = -1.0;
   }
+  delete a;
+  delete P_term2;
+  delete P_term3;
+  delete a_dt;
 }
 
 Datavector* Body::forceFrom(Body* b)

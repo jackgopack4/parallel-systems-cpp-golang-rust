@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
   //int num_bodies{(int) bodies.size()};
   for (auto i = 0; i < opts.steps; ++i)
   {
+    cout << "starting run " << i << endl;
     vector<Datavector> forces(bodies.size());
     //cout << "allocated new forces datavector" << endl;
     Quad test_quad(0.0,0.0,4.0);
