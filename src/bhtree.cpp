@@ -19,14 +19,29 @@ void BHTree::insert(Body& b)
   // If the node is empty, insert the body here
   if (body.mass == 0.0) 
   {
-    body = b;
+    body.position.data[0] = b.position.data[0];
+    body.position.data[1] = b.position.data[1];
+    body.velocity.data[0] = b.velocity.data[0];
+    body.velocity.data[1] = b.velocity.data[1];
+    body.mass = b.mass;
     return;
   }
   if(NW == nullptr)
   {
     split();
   }
+  // check distance between point and body point, if too close, give up
+  
   if (!body.checkAggregate()) {
+    auto b0_x = body.position.data[0];
+    auto b0_y = body.position.data[1];
+    auto b1_x = b.position.data[0];
+    auto b1_y = b.position.data[1];
+    auto dist = sqrt(pow((b1_x-b0_x),2)+pow((b1_y-b0_y),2));
+    if(dist < 0.0000000001) {
+      body.mass += b.mass;
+      return;
+    }
     moveExistingBody();
   }
   insertIntoQuadrant(b);

@@ -12,7 +12,7 @@ compile:
 	$(CC) $(SRCS) $(OPTS) -I$(INC) -o $(EXEC)
 
 compile2:
-	$(CC) $(SRCS) -std=c++17 -Wall -Werror -O -g3 -I$(INC) -o $(EXEC) 
+	$(CC) $(SRCS) -std=c++17 -Wall -Werror -O -g3 -lmpi -I$(INC) -o $(EXEC) 
 clean:
 	rm -f $(EXEC)
 
