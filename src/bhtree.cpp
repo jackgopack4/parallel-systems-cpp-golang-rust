@@ -6,55 +6,18 @@ BHTree::BHTree(Body& _body, Quad& _quad, BHTree& _NW, BHTree& _NE, BHTree& _SW, 
 BHTree::BHTree(Quad& _quad) : body(), quad(_quad), NW(nullptr), NE(nullptr), SW(nullptr), SE(nullptr) {}
 
 BHTree::BHTree() : body(), quad(Quad(0.0, 0.0, 4.0)), NW(nullptr), NE(nullptr), SW(nullptr), SE(nullptr) {}
-/*
-void BHTree::DestroyRecursive(BHTree* ptr)
-{
-  if (ptr)
-  {
-    if(ptr->NW) {
-      DestroyRecursive(ptr->NW);
-      DestroyRecursive(ptr->NE);
-      DestroyRecursive(ptr->SW);
-      DestroyRecursive(ptr->SE);
-    }
-    delete ptr;
-  }
-}
-*/
-BHTree::~BHTree()
-{
-    delete NW;
-    delete NE;
-    delete SW;
-    delete SE;
-}
-
-/*
-BHTree::~BHTree()
-{
-  if(NW == nullptr)
-  {
-    delete &body;
-    delete &quad;
-    return;
-  }
+BHTree::~BHTree() {
   delete NW;
   delete NE;
-  delete SE;
   delete SW;
-}*/
-
+  delete SE;
+}
 void BHTree::insert(Body& b)
 {
   // If the node is empty, insert the body here
-  if (body.mass <= 0.0000000001) 
+  if (body.getMass() == 0.0) 
   {
-    body.position_arr[0] = b.position_arr[0];
-    body.position_arr[1] = b.position_arr[1];
-    body.velocity_arr[0] = b.velocity_arr[0];
-    body.velocity_arr[1] = b.velocity_arr[1];
-    body.mass = b.mass;
-    body.index = b.index;
+    body = b;
     return;
   }
   if(NW == nullptr)
@@ -69,21 +32,17 @@ void BHTree::insert(Body& b)
 
 void BHTree::split()
 {
-  double newWidth = quad.width / 2.0;
-  double newHeight = quad.height / 2.0;
-  double curMinX = quad.minX;
-  double curMinY = quad.minY;
+  double newWidth = quad.getWidth() / 2.0;
+  double newHeight = quad.getHeight() / 2.0;
+  double curMinX = quad.getMinX();
+  double curMinY = quad.getMinY();
   Quad sw_quad(curMinX,curMinY,newWidth,newHeight);
-  //SW = std::make_shared<BHTree>(sw_quad);
-  SW = new BHTree(sw_quad);
   Quad nw_quad(curMinX,curMinY+newHeight,newWidth,newHeight);
-  //NW = std::make_shared<BHTree>(nw_quad);
-  NW = new BHTree(nw_quad);
   Quad se_quad(curMinX+newWidth,curMinY,newWidth,newHeight);
-  //SE = std::make_shared<BHTree>(se_quad);
-  SE = new BHTree(se_quad);
   Quad ne_quad(curMinX+newWidth,curMinY+newHeight,newWidth,newHeight);
-  //NE = std::make_shared<BHTree>(ne_quad);
+  SW = new BHTree(sw_quad);
+  NW = new BHTree(nw_quad);
+  SE = new BHTree(se_quad);
   NE = new BHTree(ne_quad);
   //moveExistingBody();
   //insertIntoQuadrant(body);
@@ -92,34 +51,31 @@ void BHTree::split()
 
 void BHTree::updateAggregateBody()
 {
-  double totalMass = (*NW).body.mass + (*NE).body.mass + (*SW).body.mass + (*SE).body.mass;
+  double totalMass = NW->body.getMass() + NE->body.getMass() + SW->body.getMass() + SE->body.getMass();
 
   if (totalMass > 0.0) {
-    double weightedX = (*NW).body.position_arr[0] * (*NW).body.mass + (*NE).body.position_arr[0] * (*NE).body.mass
-                      + (*SW).body.position_arr[0] * (*SW).body.mass + (*SE).body.position_arr[0] * (*SE).body.mass;
+    double weightedX = NW->body.getPosition().cartesian(0) * NW->body.getMass() + NE->body.getPosition().cartesian(0) * NE->body.getMass()
+                      + SW->body.getPosition().cartesian(0) * SW->body.getMass() + SE->body.getPosition().cartesian(0) * SE->body.getMass();
 
-    double weightedY = (*NW).body.position_arr[1] * (*NW).body.mass + (*NE).body.position_arr[1] * (*NE).body.mass
-                      + (*SW).body.position_arr[1] * (*SW).body.mass + (*SE).body.position_arr[1] * (*SE).body.mass;
+    double weightedY = NW->body.getPosition().cartesian(1) * NW->body.getMass() + NE->body.getPosition().cartesian(1) * NE->body.getMass()
+                      + SW->body.getPosition().cartesian(1) * SW->body.getMass() + SE->body.getPosition().cartesian(1) * SE->body.getMass();
 
     double centerX = weightedX / totalMass;
     double centerY = weightedY / totalMass;
 
     // Update the aggregate body information in this node
-    //body.setPosition({centerX,centerY});
-    body.position_arr[0] = centerX;
-    body.position_arr[1] = centerY;
-    body.mass = totalMass;
-    //body.setMass(totalMass);
+    body.setPosition({centerX,centerY});
+    body.setMass(totalMass);
     body.makeAggregate();
   }
 }
 
 // Helper function to move the existing body to the appropriate quadrant and update aggregate information
 void BHTree::moveExistingBody() {
-  /*if (NW == nullptr) {
+  if (NW == nullptr) {
     // This is a leaf node, no need to move the existing body
     return;
-  }*/
+  }
   insertIntoQuadrant(body);
 
   // Calculate the aggregate body information
@@ -127,8 +83,8 @@ void BHTree::moveExistingBody() {
 
     //isAggregate = true;
     //body(-1,{centerX,centerY},totalMass,true);
-    //body.position.x = centerX;
-    //body.position.y = centerY;
+    //body.getPosition().x = centerX;
+    //body.getPosition().y = centerY;
     //body.setMass(totalMass);
 }
 
@@ -136,20 +92,20 @@ void BHTree::moveExistingBody() {
 // Helper function to insert a body into the appropriate quadrant
 void BHTree::insertIntoQuadrant(Body& b) 
 {
-  double midX = quad.minX + quad.width / 2.0;
-  double midY = quad.minY + quad.height / 2.0;
+  double midX = quad.getMinX() + quad.getWidth() / 2.0;
+  double midY = quad.getMinY() + quad.getHeight() / 2.0;
 
-  if (b.position_arr[0] <= midX) {
-    if (b.position_arr[1] <= midY) {
-      (*SW).insert(b);
+  if (b.getPosition().cartesian(0) <= midX) {
+    if (b.getPosition().cartesian(1) <= midY) {
+      SW->insert(b);
     } else {
-      (*NW).insert(b);
+      NW->insert(b);
     }
   } else {
-    if (b.position_arr[1] <= midY) {
-      (*SE).insert(b);
+    if (b.getPosition().cartesian(1) <= midY) {
+      SE->insert(b);
     } else {
-      (*NE).insert(b);
+      NE->insert(b);
     }
   }
   updateAggregateBody();
@@ -168,100 +124,71 @@ void BHTree::printTree(int indent,std::ostream &os, std::string_view quadrant) {
 
   os << body << "\n";
 
-  if (NW != nullptr && (*NW).body.mass > 0.0) {
-    (*NW).printTree(indent + 1, os, "NW");
+  if (NW != nullptr && NW->body.getMass() > 0.0) {
+    NW->printTree(indent + 1, os, "NW");
   }
 
-  if (NE != nullptr && (*NE).body.mass > 0.0) {
-    (*NE).printTree(indent + 1, os, "NE");
+  if (NE != nullptr && NE->body.getMass() > 0.0) {
+    NE->printTree(indent + 1, os, "NE");
   }
 
-  if (SW != nullptr && (*SW).body.mass > 0.0) {
-    (*SW).printTree(indent + 1, os, "SW");
+  if (SW != nullptr && SW->body.getMass() > 0.0) {
+    SW->printTree(indent + 1, os, "SW");
   }
 
-  if (SE != nullptr && (*SE).body.mass > 0.0) {
-    (*SE).printTree(indent + 1, os, "SE");
+  if (SE != nullptr && SE->body.getMass() > 0.0) {
+    SE->printTree(indent + 1, os, "SE");
   }
 }
 
-void BHTree::calculateForceArr(Body& b, double theta, double* force_arr)
-{ // Calculates the cumulative force on body b, passed in from main
-  if (body.index == b.index || body.mass <= 0.0 || b.mass <= 0.0) {
-    return;
+void BHTree::updateVectorWithBodies(std::vector<Body>& bodies) {
+  if (body.getIndex() != -1) {
+    // Update the corresponding entry in the vector
+    bodies[body.getIndex()] = body;
   }
-  if (body.index != -1) {
-    b.forceFromArr(b,body,force_arr);
-    //std::cout << "force on body["<<b.index<<"] after body["<<body.index<<"] acts:\n";
-    //std::cout << "[" << force_arr[0] << ", " << force_arr[1] << "]\n";
-    return;
-  }
-  double s = quad.width;
-  double d = sqrt(
-      pow((b.position_arr[0]-body.position_arr[0]),2)
-      + pow((b.position_arr[1]-body.position_arr[1]),2));
-  if ((s / d) < theta) {
-    b.forceFromArr(b,body,force_arr);
-    //std::cout << "force on body["<<b.index<<"] after body["<<body.index<<"] acts:\n";
-    //std::cout << "[" << force_arr[0] << ", " << force_arr[1] << "]\n";
-    return;
-  }
+
   if (NW != nullptr) {
-    NW->calculateForceArr(b,theta,force_arr);
+    NW->updateVectorWithBodies(bodies);
   }
+
   if (NE != nullptr) {
-    NE->calculateForceArr(b,theta,force_arr);
+    NE->updateVectorWithBodies(bodies);
   }
+
   if (SW != nullptr) {
-    SW->calculateForceArr(b,theta,force_arr);
+    SW->updateVectorWithBodies(bodies);
   }
+
   if (SE != nullptr) {
-    SE->calculateForceArr(b,theta,force_arr);
+    SE->updateVectorWithBodies(bodies);
   }
 }
-/*
-Datavector BHTree::calculateForce(Body& b, double theta) {
-    // If the node is an external node (and it is not body b), calculate the force exerted by the current node on b
-    if (body.index != -1 && b != body) {
-        return b.forceFrom(body);  // Use forceFrom function from Body class
-    }
 
-    // Otherwise, calculate the ratio s / d
-    double s = quad.width;
-    double d = b.position.minus(body.position).magnitude();
+void calculateForceHelper(BHTree* bht, Body& b0, Body& b1, double theta, Datavector* totalForce) {
+  
+  double s = bht->quad.getWidth();
+  auto b1_pos = b1.getPosition();
+  auto b0_pos = b0.getPosition();
+  auto tmp_diff = b1_pos.minus(&b0_pos);
+  double d = tmp_diff->magnitude();
+  delete tmp_diff;
+  if(b1 == b0) return;
+  if ((b0.getIndex() != -1) || s / d < theta) {
+    Datavector* tmp_forcefrom = b1.forceFrom(&b0);
+    totalForce->plusEquals(tmp_forcefrom);
+    delete tmp_forcefrom;
+    return;
+  }
+  if (bht->NW != nullptr) {
+    calculateForceHelper(bht->NW,bht->NW->body,b1,theta,totalForce);
+    calculateForceHelper(bht->NE,bht->NE->body,b1,theta,totalForce);
+    calculateForceHelper(bht->SW,bht->SW->body,b1,theta,totalForce);
+    calculateForceHelper(bht->SE,bht->SE->body,b1,theta,totalForce);
+  }
+}
 
-    // If s / d is less than a certain threshold (theta), treat this internal node as a single body
-    if (s / d < theta) {
-        return b.forceFrom(body);  // Use forceFrom function from Body class
-    }
-
-    // Otherwise, run the procedure recursively on each of the current node's children
-    Datavector totalForce;
-
-    if (NW != nullptr) {
-        Datavector forceFromNW = (*NW).calculateForce(b,theta);
-        totalForce = totalForce.plus(forceFromNW);
-        //delete forceFromNW;
-    }
-
-    if (NE != nullptr) {
-        Datavector forceFromNE = (*NE).calculateForce(b,theta);
-        totalForce = totalForce.plus(forceFromNE);
-        //delete forceFromNE;
-    }
-
-    if (SW != nullptr) {
-        Datavector forceFromSW = (*SW).calculateForce(b,theta);
-        totalForce = totalForce.plus(forceFromSW);
-        //delete forceFromSW;
-    }
-
-    if (SE != nullptr) {
-      Datavector forceFromSE = (*SE).calculateForce(b,theta);
-        totalForce = totalForce.plus(forceFromSE);
-        //delete forceFromSE;
-    }
-
+Datavector* BHTree::calculateForce(Body& b, double theta) {
+    Datavector* totalForce = new Datavector();
+    calculateForceHelper(this,body,b,theta,totalForce);
     return totalForce;
 }
-*/

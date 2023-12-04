@@ -1,47 +1,14 @@
 #include "body.h"
 
-void positionAndVelocityUpdate(Body* b, double* force, double dt) {
-  double ax = force[0]*(1/b->mass);
-  double ay = force[1]*(1/b->mass);
-
-  double Vxdt = b->velocity_arr[0]*dt;
-  double Vydt = b->velocity_arr[1]*dt;
-
-  double half_ax_dt2 = ax*0.5*pow(dt,2);
-  double half_ay_dt2 = ay*0.5*pow(dt,2);
-
-  double axdt = ax*dt;
-  double aydt = ay*dt;
-
-  double px_prime = b->position_arr[0] + Vxdt + half_ax_dt2;
-  double py_prime = b->position_arr[1] + Vydt + half_ay_dt2;
-
-  double vx_prime = b->velocity_arr[0] + axdt;
-  double vy_prime = b->velocity_arr[1] + aydt;
-
-  b->position_arr[0] = px_prime;
-  b->position_arr[1] = py_prime;
-  b->velocity_arr[0] = vx_prime;
-  b->velocity_arr[1] = vy_prime;
-
-  if(b->position_arr[0] <= 0.0 || b->position_arr[0] >= 4.0
-    || b->position_arr[1] <= 0.0 || b->position_arr[1] >= 4.0) 
-  {
-    b->mass = -1.0;
-  }
-}
-
-Body::Body(const Body& other) : index(other.index) {
+Body::Body(const Body& other) : position(other.position), velocity(other.velocity), mass(other.mass), index(other.index) {
   g = 0.0001;
   rlimit = 0.03;
   isAggregate = false;
-  position_arr[0] = other.position_arr[0];
-  position_arr[1] = other.position_arr[1];
-  velocity_arr[0] = other.velocity_arr[0];
-  velocity_arr[1] = other.velocity_arr[1];
 }
 
-Body::Body()
+Body::Body():
+  position(Datavector({0.0,0.0})),
+  velocity(Datavector({0.0,0.0}))
 {
   mass = 0.0;
   index = -1;
@@ -49,85 +16,103 @@ Body::Body()
   rlimit = 0.03;
   isAggregate = false;
 }
-/*
-Body::~Body()
-{
-  position = nullptr;
-  velocity = nullptr;
-}
-*/
 
-Body::Body(int _index, double* _position, double* _velocity, double _mass)
-        : mass(_mass), index(_index) {
-  position_arr[0] = _position[0];
-  position_arr[1] = _position[1];
-  velocity_arr[0] = _velocity[0];
-  velocity_arr[1] = _velocity[1];
+Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass):
+  position(_position),
+  velocity(_velocity),
+  mass(_mass),
+  index(_index)
+{
   g = 0.0001;
   rlimit = 0.03;
   isAggregate = false;
 }
-Body::Body(int _index, double* _position, double* _velocity, double _mass, bool _aggregate)
-        : mass(_mass), index(_index), isAggregate(_aggregate) {
-  position_arr[0] = _position[0];
-  position_arr[1] = _position[1];
-  velocity_arr[0] = _velocity[0];
-  velocity_arr[1] = _velocity[1];
+
+Body::Body(int _index, Datavector _position, Datavector _velocity, double _mass, bool _aggregate):
+  position(_position),
+  velocity(_velocity),
+  mass(_mass),
+  index(_index),
+  isAggregate(_aggregate)
+{
   g = 0.0001;
   rlimit = 0.03;
 }
-void Body::move(double* force, double dt)
+
+Body::Body(int _index, Datavector& initialPosition, Datavector& initialVelocity, double initialMass, double gravity, double limit)
+        : position(initialPosition), velocity(initialVelocity), mass(initialMass), g(gravity), rlimit(limit), index(_index) {
+    }
+
+void Body::move(Datavector* force, double dt)
 {
-  double ax = force[0]*(1/mass);
-  double ay = force[1]*(1/mass);
+  Datavector* a = force->scale(1/mass);
+  //double ax = a->cartesian(0);
+  //double ay = a->cartesian(1);
 
-  double Vxdt = velocity_arr[0]*dt;
-  double Vydt = velocity_arr[1]*dt;
+  Datavector* P_term2 = velocity.scale(dt);
+  double Vxdt = P_term2->cartesian(0);
+  double Vydt = P_term2->cartesian(1);
 
-  double half_ax_dt2 = ax*0.5*pow(dt,2);
-  double half_ay_dt2 = ay*0.5*pow(dt,2);
+  Datavector* P_term3 = a->scale(0.5*dt*dt);
+  double half_ax_dt2 = P_term3->cartesian(0);
+  double half_ay_dt2 = P_term3->cartesian(1);
 
-  double axdt = ax*dt;
-  double aydt = ay*dt;
+  Datavector* a_dt = a->scale(dt);
+  double axdt = a_dt->cartesian(0);
+  double aydt = a_dt->cartesian(1);
 
-  double px_prime = position_arr[0] + Vxdt + half_ax_dt2;
-  double py_prime = position_arr[1] + Vydt + half_ay_dt2;
+  double px_prime = position.cartesian(0) + Vxdt + half_ax_dt2;
+  double py_prime = position.cartesian(1) + Vydt + half_ay_dt2;
 
-  double vx_prime = velocity_arr[0] + axdt;
-  double vy_prime = velocity_arr[1] + aydt;
+  double vx_prime = velocity.cartesian(0)+axdt;
+  double vy_prime = velocity.cartesian(1)+aydt;
 
-  position_arr[0] = px_prime;
-  position_arr[1] = py_prime;
-  velocity_arr[0] = vx_prime;
-  velocity_arr[1] = vy_prime;
+  Datavector* new_pos = new Datavector({px_prime,py_prime});
+  position = *(new_pos);
+  delete new_pos;
+  Datavector* new_vel = new Datavector({vx_prime,vy_prime});
+  velocity = *(new_vel);
+  delete new_vel;
 
-  if(position_arr[0] <= 0.0 || position_arr[0] >= 4.0
-    || position_arr[1] <= 0.0 || position_arr[1] >= 4.0) 
+  //velocity = *(velocity.plus(a->scale(dt)));
+  //position = *(position.plus(velocity.scale(dt)));
+  if(position.cartesian(0) <= 0.0 || position.cartesian(0) >= 4.0
+    || position.cartesian(1) <= 0.0 || position.cartesian(1) >= 4.0) 
   {
-    mass = -1.0;
+      mass = -1.0;
   }
 }
 
-void Body::forceFromArr(Body& b0, Body& b1, double* force_arr)
-{ // calculates force from b1 applied to b0
-  if (b0.mass == 0 || b1.mass == 0) {
-    return;
-  }
-  //std::cout << "force on body["<<b0.index<<"] before body["<<b1.index<<"] acts:\n";
-  //std::cout << "[" << force_arr[0] << ", " << force_arr[1] << "]\n";
-  double dx = b1.position_arr[0] - b0.position_arr[0];
-  double dy = b1.position_arr[1] - b0.position_arr[1];
-  double dist = sqrt(pow(dx,2)+pow(dy,2));
+Datavector* Body::forceFrom(Body* b)
+{
+  //Body* a = this;
+  Datavector* delta = b->position.minus(&(this->position));
+  
+  double dist = delta->magnitude();
+  double dx = delta->cartesian(0);
+  double dy = delta->cartesian(1);
+  delete delta;
   double dist2 = dist;
-  if (dist < rlimit) dist2 = rlimit;
-  double Fx = (g*b0.mass*b1.mass*dx) / (dist*pow(dist2,2));
-  double Fy = (g*b0.mass*b1.mass*dy) / (dist*pow(dist2,2));
+  if (dist < rlimit)
+  {
+    dist2 = rlimit;
+  }
+  double Fx = (g * this->mass * b->mass * dx) / (dist*dist2*dist2);
+  double Fy = (g * this->mass * b->mass * dy) / (dist*dist2*dist2);
 
-  force_arr[0] += Fx;
-  force_arr[1] += Fy;
+  return new Datavector({Fx,Fy});
+  //double magnitude = (g * this->mass * b->mass) / (dist * dist);
+  //return delta->direction()->scale(magnitude);
+}
 
-  //double res[2]{Fx,Fy};
-  //return res;
+Datavector& Body::getPosition() 
+{
+  return position;
+}
+
+Datavector& Body::getVelocity()
+{
+  return velocity;
 }
 
 int Body::getIndex()
@@ -145,10 +130,12 @@ void Body::setMass(double _mass)
   mass = _mass;
 }
 
-void Body::setPosition(double* _position)
+void Body::setPosition(std::vector<double> _position)
 {
-  position_arr[0] = _position[0];
-  position_arr[1] = _position[1];
+  Datavector* tmp_pos = new Datavector(_position);
+  position = *(tmp_pos);
+  delete tmp_pos;
+  //position(Datavector(_position));
 }
 
 void Body::makeAggregate()
@@ -157,20 +144,17 @@ void Body::makeAggregate()
   index = -1;
 }
 
-bool Body::checkAggregate()
-{
-  return isAggregate;
-}
-
 bool Body::operator==(Body& other)
 {
-  return index == other.index 
-    && position_arr[0] == other.position_arr[0] 
-    && position_arr[1] == other.position_arr[1]
-    && mass == other.mass;
+  return position == other.getPosition() && mass == other.getMass();
 }
 
 bool Body::operator!=(Body& other)
 {
   return !(*this == other);
+}
+
+bool Body::checkAggregate()
+{
+  return isAggregate;
 }

@@ -8,9 +8,9 @@
 class Datavector
 {
   private:
-  public:
     int n{};
     std::vector<double> data;
+  public:
     Datavector(const Datavector& other);
     //Datavector(Datavector& other);
     Datavector(Datavector* other);
@@ -19,18 +19,17 @@ class Datavector
     Datavector(std::vector<double> _data);
     Datavector(int _n, double _data[]);
     Datavector();
-    ~Datavector();
-    void clear();
     int size();
-    void plusEquals(Datavector* other);
-    double dot(Datavector& other);
+    
+    double dot(Datavector* other);
     double magnitude();
-    double distanceTo(Datavector& other);
-    Datavector plus(Datavector& other);
-    Datavector minus(Datavector& other);
+    double distanceTo(Datavector* other);
+    Datavector* plus(Datavector* other);
+    void plusEquals(Datavector* other);
+    Datavector* minus(Datavector* other);
     double cartesian(int i);
-    Datavector scale(double factor);
-    Datavector direction();
+    Datavector* scale(double factor);
+    Datavector* direction();
     // Overload the equality operator
     bool operator==(Datavector& other);
     friend std::ostream& operator << (std::ostream &os, Datavector &v)

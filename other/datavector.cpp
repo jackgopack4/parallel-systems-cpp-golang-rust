@@ -68,6 +68,13 @@ Datavector Datavector::plus(Datavector& other)
   return sum;
 }
 
+void Datavector::plusEquals(Datavector* other)
+{
+  for(auto i=0;i<n;++i) {
+    data[i] += other->cartesian(i);
+  }
+}
+
 Datavector Datavector::minus(Datavector& other) 
 {
   //Datavector diff(n);

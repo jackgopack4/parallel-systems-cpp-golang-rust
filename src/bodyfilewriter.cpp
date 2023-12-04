@@ -14,15 +14,13 @@ bool BodyFileWriter::writeBodies(std::vector<Body>& bodies) {
     file << bodies.size() << std::endl; // Write the number of bodies in the first line
 
     for (Body& body : bodies) {
-        //Datavector& pos = body.getPosition();
-        //Datavector& vel = body.getVelocity();
-
-        //double 
+        Datavector& pos = body.getPosition();
+        Datavector& vel = body.getVelocity();
 
         file << body.getIndex() << " "
-             << body.position_arr[0] << " " << body.position_arr[1] << " "
+             << pos.cartesian(0) << " " << pos.cartesian(1) << " "
              << body.getMass() << " "
-             << body.velocity_arr[0] << " " << body.velocity_arr[1] << std::endl;
+             << vel.cartesian(0) << " " << vel.cartesian(1) << std::endl;
     }
 
     return true;

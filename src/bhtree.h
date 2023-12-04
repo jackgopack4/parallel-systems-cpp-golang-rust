@@ -3,36 +3,32 @@
 #include <vector>
 #include <iostream>
 #include <string>
-#include <string_view>
-#include <memory>
-#include <cmath>
-
 #include "quad.h"
-
+#include <string_view>
 class BHTree {
 private:
+  
+  void split();
+  void moveExistingBody();
+  void printTree(int indent, std::ostream &os, std::string_view quadrant);
+  void updateAggregateBody();
+public:
   Body body;     // body or aggregate body stored in this node
   Quad quad;     // square region that the tree represents
   BHTree* NW;     // tree representing northwest quadrant
   BHTree* NE;     // tree representing northeast quadrant
   BHTree* SW;     // tree representing southwest quadrant
   BHTree* SE;     // tree representing southeast quadrant
-  void split();
-  void moveExistingBody();
-  void printTree(int indent, std::ostream &os, std::string_view quadrant);
-  void updateAggregateBody();
-public:
   // Constructor
   BHTree(Body& _body, Quad& _quad, BHTree& _NW, BHTree& _NE, BHTree& _SW, BHTree& _SE);
   BHTree(Quad& _quad);
   BHTree();
   ~BHTree();
   // methods
-  //void DestroyRecursive(BHTree* ptr);
   void insert(Body& b);
   void insertIntoQuadrant(Body& b);
-  void calculateForceArr(Body& b, double theta, double* force_arr);
-  //Datavector calculateForce(Body& b, double theta);
+  void updateVectorWithBodies(std::vector<Body>& bodies);
+  Datavector* calculateForce(Body& b, double theta);
   friend std::ostream& operator << (std::ostream &os, BHTree &bht)
   {
     bht.printTree(0,os,"root");
